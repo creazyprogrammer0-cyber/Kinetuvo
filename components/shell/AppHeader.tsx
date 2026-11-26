@@ -37,7 +37,10 @@ import {
   getClassificationDescriptor,
 } from '@/lib/taxonomy/registry';
 import { FOUNDATION_RESOURCES } from '@/lib/resources/seed-foundation';
-import { loadPersonalCollection } from '@/lib/collections/storage-adapter';
+import {
+  DEFAULT_COLLECTION,
+  loadPersonalCollection,
+} from '@/lib/collections/storage-adapter';
 
 interface AppHeaderProps {
   activeSection?: string;
@@ -73,14 +76,8 @@ export function AppHeader({
     'Spring Physics',
     'WAI-ARIA Combobox',
   ]);
-  const [currentCollection, setCurrentCollection] = useState(() => ({
-    resourceSlugs: [
-      'multi-brand-semantic-token-architecture',
-      'spring-physics-micro-interaction',
-      'wai-aria-accessible-combobox-pattern',
-    ],
-    savedPresets: [],
-  }));
+  const [currentCollection, setCurrentCollection] =
+    useState(DEFAULT_COLLECTION);
 
   const megaMenuRef = useRef<HTMLDivElement>(null);
 
@@ -558,51 +555,88 @@ export function AppHeader({
         isOpen={searchModalOpen}
         onClose={() => setSearchModalOpen(false)}
         title="Global Encyclopedia Search"
-        description="Search design systems, concepts, animations, components, technologies, and all 16 categories."
+        description="Search design systems, concepts, animations, components, technologies, and all 16 categories. Press Enter to open full discovery hub."
       >
         <div className="space-y-4">
-          <div className="relative">
+          <div className="relative flex items-center">
             <Search className="w-4 h-4 text-[var(--ds-muted-foreground)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
               autoFocus
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search concepts, tokens, spring physics, ARIA, CSS..."
-              className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)] focus:outline-2 focus:outline-[var(--ds-focus)]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  e.preventDefault();
+                  recordRecentSearch(searchQuery.trim());
+                  setSearchModalOpen(false);
+                  router.push(
+                    `/search?q=${encodeURIComponent(searchQuery.trim())}`
+                  );
+                }
+              }}
+              placeholder="Search titles, tags, aliases, technologies (e.g., Spring Physics, ARIA, CSS Grid)..."
+              className="w-full pl-9 pr-20 py-2.5 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)] focus:outline-2 focus:outline-[var(--ds-focus)]"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 px-2 py-0.5 text-[11px] font-mono rounded bg-[var(--ds-surface)] border border-[var(--ds-border)] text-[var(--ds-muted-foreground)] hover:text-[var(--ds-foreground)]"
+              >
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Domain Scope Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-1">
-            {[
-              { id: 'all', label: 'All Scopes' },
-              { id: 'official-design-system', label: 'Design Systems' },
-              { id: 'animation-technique', label: 'Animations' },
-              { id: 'ui-component', label: 'Components' },
-              { id: 'design-methodology', label: 'Methodologies' },
-              { id: 'development-technology', label: 'Technologies' },
-            ].map((scope) => (
-              <button
-                key={scope.id}
-                type="button"
-                onClick={() => setSearchFilterScope(scope.id)}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded-[6px] transition-colors ${
-                  searchFilterScope === scope.id
-                    ? 'bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] font-semibold'
-                    : 'bg-[var(--ds-muted)] text-[var(--ds-muted-foreground)] hover:text-[var(--ds-foreground)]'
-                }`}
-              >
-                {scope.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1">
+              {[
+                { id: 'all', label: 'All Scopes' },
+                { id: 'official-design-system', label: 'Design Systems' },
+                { id: 'animation-technique', label: 'Animations' },
+                { id: 'ui-component', label: 'Components' },
+                { id: 'interaction-pattern', label: 'Interactions' },
+                { id: 'development-technology', label: 'Technologies' },
+              ].map((scope) => (
+                <button
+                  key={scope.id}
+                  type="button"
+                  onClick={() => setSearchFilterScope(scope.id)}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-[6px] transition-colors ${
+                    searchFilterScope === scope.id
+                      ? 'bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] font-semibold'
+                      : 'bg-[var(--ds-muted)] text-[var(--ds-muted-foreground)] hover:text-[var(--ds-foreground)]'
+                  }`}
+                >
+                  {scope.label}
+                </button>
+              ))}
+            </div>
+
+            <Link
+              href={
+                searchQuery.trim()
+                  ? `/search?q=${encodeURIComponent(searchQuery.trim())}`
+                  : '/search'
+              }
+              onClick={() => {
+                if (searchQuery.trim()) recordRecentSearch(searchQuery.trim());
+                setSearchModalOpen(false);
+              }}
+              className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-[var(--ds-accent)] hover:underline"
+            >
+              <span>Open Full Search & 11-Facet Filters</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           {/* Recent Searches & Suggestions when query is empty */}
           {!searchQuery.trim() && recentSearches.length > 0 && (
             <div className="space-y-1.5">
               <div className="text-[11px] font-mono text-[var(--ds-muted-foreground)]">
-                RECENT SEARCHES & QUICK SUGGESTIONS
+                RECENT SEARCHES & TRENDING TOPICS
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {recentSearches.map((term) => (
@@ -628,18 +662,27 @@ export function AppHeader({
               {filteredModalResources.length === 0 ? (
                 <div className="p-4 text-center bg-[var(--ds-background)] rounded-[8px] border border-[var(--ds-border)] space-y-2">
                   <p className="text-xs font-semibold text-[var(--ds-foreground)]">
-                    No design concepts matched &quot;{searchQuery}&quot;.
+                    No immediate concepts matched &quot;{searchQuery}&quot;.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSearchFilterScope('all');
-                    }}
-                    className="text-xs font-semibold text-[var(--ds-accent)] hover:underline"
-                  >
-                    Reset search query
-                  </button>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSearchFilterScope('all');
+                      }}
+                      className="text-xs font-semibold text-[var(--ds-accent)] hover:underline"
+                    >
+                      Reset query
+                    </button>
+                    <Link
+                      href={`/search?q=${encodeURIComponent(searchQuery)}`}
+                      onClick={() => setSearchModalOpen(false)}
+                      className="text-xs font-mono text-[var(--ds-foreground)] underline"
+                    >
+                      Search Deep Index →
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--ds-border)] border border-[var(--ds-border)] rounded-[8px] overflow-hidden">
@@ -740,6 +783,7 @@ export function AppHeader({
             </div>
             {[
               { label: 'Homepage & Interactive Showcase', href: '/' },
+              { label: 'Global Search & Discovery Engine', href: '/search' },
               { label: 'Resource Directory & Multi-Facet Explorer', href: '/directory' },
               { label: 'Interactive Code Playground', href: '/playground' },
               { label: 'Design System & Component Library', href: '/design-system' },

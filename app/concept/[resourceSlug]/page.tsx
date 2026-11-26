@@ -15,6 +15,7 @@ import {
   toggleBookmarkInCollection,
   addParameterPresetToCollection,
 } from '@/lib/collections/storage-adapter';
+import { recordRealResourceView } from '@/lib/search/metrics-ledger';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useToast } from '@/components/ui/InteractionPrimitives';
 
@@ -34,9 +35,10 @@ export default function ConceptDetailPage({
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => {
       setCollection(loadPersonalCollection());
+      recordRealResourceView(activeResource.slug);
     });
     return () => window.cancelAnimationFrame(raf);
-  }, []);
+  }, [activeResource.slug]);
 
   const parentCategory = getCategoryBySlug(activeResource.categorySlug);
 
