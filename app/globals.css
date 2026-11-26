@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* 1. Semantic Color Tokens — Light Theme (Editorial Cool Neutral & Graphite) */
+  --ds-background: #F6F8FA;
+  --ds-foreground: #111827;
+  --ds-surface: #FFFFFF;
+  --ds-surface-elevated: #FFFFFF;
+  --ds-surface-sunken: #EEF2F6;
+  --ds-muted: #F1F5F9;
+  --ds-muted-foreground: #4B5563;
+  --ds-subtle-foreground: #6B7280;
+  --ds-border: #E2E8F0;
+  --ds-border-strong: #CBD5E1;
+
+  /* Restrained Blue-Violet Accent & Semantic Actions */
+  --ds-primary: #4338CA;
+  --ds-primary-hover: #3730A3;
+  --ds-primary-foreground: #FFFFFF;
+  --ds-secondary: #EEF2FF;
+  --ds-secondary-hover: #E0E7FF;
+  --ds-secondary-foreground: #312E81;
+  --ds-accent: #4F46E5;
+  --ds-accent-subtle: #EEF2FF;
+  --ds-accent-foreground: #312E81;
+
+  /* Accessible Status Tokens (Always paired with icon + text label) */
+  --ds-success: #047857;
+  --ds-success-surface: #ECFDF5;
+  --ds-success-border: #A7F3D0;
+  --ds-warning: #B45309;
+  --ds-warning-surface: #FFFBEB;
+  --ds-warning-border: #FDE68A;
+  --ds-error: #B91C1C;
+  --ds-error-surface: #FEF2F2;
+  --ds-error-border: #FECACA;
+
+  /* Interaction States */
+  --ds-focus: #4F46E5;
+  --ds-disabled-surface: #F1F5F9;
+  --ds-disabled-foreground: #94A3B8;
+
+  /* Legacy alias mappings for Phase 0 compatibility */
+  --surface-canvas: var(--ds-background);
+  --surface-elevated: var(--ds-surface);
+  --surface-muted: var(--ds-muted);
+  --text-primary: var(--ds-foreground);
+  --text-secondary: var(--ds-muted-foreground);
+  --text-muted: var(--ds-subtle-foreground);
+  --border-subtle: var(--ds-border);
+  --accent-primary: var(--ds-accent);
+  --accent-primary-hover: var(--ds-primary-hover);
+
+  /* 2. Layout Architecture Tokens */
+  --ds-layout-max-width: 1360px;
+  --ds-layout-wide-width: 1440px;
+  --ds-layout-reading-width: 68ch;
+  --ds-layout-sidebar-width: 264px;
+  --ds-layout-nav-height: 64px;
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 8px;
+  --ds-radius-lg: 12px;
+
+  /* 3. Motion Language Tokens */
+  --ds-duration-micro: 120ms;
+  --ds-duration-fast: 180ms;
+  --ds-duration-page: 280ms;
+  --ds-duration-modal: 220ms;
+  --ds-duration-drawer: 260ms;
+  --ds-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ds-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ds-ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.dark {
+  /* 1. Semantic Color Tokens — Dark Theme (Deep Charcoal & Elevated Graphite) */
+  --ds-background: #0B0F17;
+  --ds-foreground: #F8FAFC;
+  --ds-surface: #111827;
+  --ds-surface-elevated: #1A2333;
+  --ds-surface-sunken: #070A10;
+  --ds-muted: #1E293B;
+  --ds-muted-foreground: #CBD5E1;
+  --ds-subtle-foreground: #94A3B8;
+  --ds-border: #1E293B;
+  --ds-border-strong: #334155;
+
+  /* Restrained Blue-Violet Accent — Dark Optical Compensation */
+  --ds-primary: #6366F1;
+  --ds-primary-hover: #818CF8;
+  --ds-primary-foreground: #090D16;
+  --ds-secondary: #1E1B4B;
+  --ds-secondary-hover: #312E81;
+  --ds-secondary-foreground: #E0E7FF;
+  --ds-accent: #818CF8;
+  --ds-accent-subtle: #1E1B4B;
+  --ds-accent-foreground: #E0E7FF;
+
+  /* Accessible Status Tokens — Dark Polarity */
+  --ds-success: #34D399;
+  --ds-success-surface: #064E3B;
+  --ds-success-border: #047857;
+  --ds-warning: #FBBF24;
+  --ds-warning-surface: #451A03;
+  --ds-warning-border: #B45309;
+  --ds-error: #F87171;
+  --ds-error-surface: #450A0A;
+  --ds-error-border: #B91C1C;
+
+  /* Interaction States */
+  --ds-focus: #818CF8;
+  --ds-disabled-surface: #1E293B;
+  --ds-disabled-foreground: #475569;
+}
+
+/* Reduced Motion Guardrail (System + Manual Simulation Class) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

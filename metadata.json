@@ -1,0 +1,6 @@
+{
+  "name": "Digital Design Encyclopedia",
+  "description": "An interactive knowledge and experimentation platform for digital design systems, visual styles, UI/UX patterns, motion principles, and live code implementation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
