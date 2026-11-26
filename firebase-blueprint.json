@@ -166,6 +166,67 @@
         "updatedAt"
       ]
     },
+    "CollectionItemDoc": {
+      "title": "CollectionItemDoc",
+      "description": "Normalized collection item record stored under /collections/{collectionId}/items/{itemId} for scalable large collections.",
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "description": "Stable item ID matching resourceSlug."
+        },
+        "collectionId": {
+          "type": "string",
+          "description": "Parent collection document ID."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID matching the parent collection owner."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Referenced encyclopedia resource slug."
+        },
+        "resourceTitle": {
+          "type": "string",
+          "description": "Denormalized resource title for fast rendering."
+        },
+        "categorySlug": {
+          "type": "string",
+          "description": "Denormalized category slug."
+        },
+        "orderIndex": {
+          "type": "number",
+          "description": "Sort position inside the collection."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Curator annotation for this item (0 to 500 characters)."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["private", "public"],
+          "description": "Mirrors parent collection visibility for secure query evaluation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when added to collection."
+        }
+      },
+      "required": [
+        "itemId",
+        "collectionId",
+        "ownerId",
+        "resourceSlug",
+        "resourceTitle",
+        "categorySlug",
+        "orderIndex",
+        "notes",
+        "visibility",
+        "createdAt"
+      ]
+    },
     "PlaygroundExperiment": {
       "title": "PlaygroundExperiment",
       "description": "User-saved interactive playground experiment with strict source code size limits, template metadata, and private/public visibility.",
@@ -294,7 +355,7 @@
     },
     "CmsResourceDoc": {
       "title": "CmsResourceDoc",
-      "description": "Structured encyclopedia resource managed via the Content Management System with 8 field groups, live preview validation state, and revision history.",
+      "description": "Structured encyclopedia resource managed via the Content Management System with 8 field groups, live preview validation state, schema versioning, and revision history.",
       "type": "object",
       "properties": {
         "slug": {
@@ -683,6 +744,554 @@
         "updatedAt"
       ]
     },
+    "CmsSubcategoryDoc": {
+      "title": "CmsSubcategoryDoc",
+      "description": "Hierarchical subcategory record stored in /cms_subcategories/{subcategoryId} supporting unlimited nesting depth and parent category linkage.",
+      "type": "object",
+      "properties": {
+        "subcategoryId": {
+          "type": "string",
+          "description": "Deterministic kebab-case document ID (e.g. 'ui-components--cards-containers')."
+        },
+        "slug": {
+          "type": "string",
+          "description": "Subcategory slug."
+        },
+        "name": {
+          "type": "string",
+          "description": "Subcategory display title (2 to 100 characters)."
+        },
+        "parentCategorySlug": {
+          "type": "string",
+          "description": "Parent primary category slug."
+        },
+        "parentSubcategoryId": {
+          "type": "string",
+          "description": "Optional parent subcategory ID for depth >= 3 nodes."
+        },
+        "depth": {
+          "type": "number",
+          "description": "Hierarchy depth level (2 to 10)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Subcategory scope explanation (0 to 500 characters)."
+        },
+        "orderIndex": {
+          "type": "number",
+          "description": "Sort index within parent node."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Subcategory status."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "UID of administrator who updated this node."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of update."
+        }
+      },
+      "required": [
+        "subcategoryId",
+        "slug",
+        "name",
+        "parentCategorySlug",
+        "parentSubcategoryId",
+        "depth",
+        "description",
+        "orderIndex",
+        "status",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsResourceRevisionDoc": {
+      "title": "CmsResourceRevisionDoc",
+      "description": "Immutable revision snapshot stored in /cms_resource_revisions/{revisionId} tracking schema version, content provenance, and editorial history.",
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string",
+          "description": "Stable revision ID (e.g. '{resourceSlug}-rev-{revisionNumber}')."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Target resource slug."
+        },
+        "revisionNumber": {
+          "type": "number",
+          "description": "Monotonic revision number."
+        },
+        "schemaVersion": {
+          "type": "number",
+          "description": "Schema version of the resource payload (e.g. 2)."
+        },
+        "dataOrigin": {
+          "type": "string",
+          "enum": ["sample-seed", "verified-editorial"],
+          "description": "Distinguishes initial sample seed data from verified editorial content."
+        },
+        "title": {
+          "type": "string",
+          "description": "Resource title at this revision."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "in_review", "approved", "published", "rejected", "archived"],
+          "description": "Workflow status at this revision."
+        },
+        "changeSummary": {
+          "type": "string",
+          "description": "Editorial summary of changes in this revision (1 to 500 characters)."
+        },
+        "snapshotJson": {
+          "type": "string",
+          "description": "Serialized JSON snapshot of the resource state (up to 60000 characters)."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "UID of the author/editor who committed this revision."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Display name of the author/editor."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of revision creation."
+        }
+      },
+      "required": [
+        "revisionId",
+        "resourceSlug",
+        "revisionNumber",
+        "schemaVersion",
+        "dataOrigin",
+        "title",
+        "status",
+        "changeSummary",
+        "snapshotJson",
+        "authorUid",
+        "authorName",
+        "createdAt"
+      ]
+    },
+    "CmsResourceExampleDoc": {
+      "title": "CmsResourceExampleDoc",
+      "description": "Runnable demonstration example record stored in /cms_resource_examples/{exampleId}.",
+      "type": "object",
+      "properties": {
+        "exampleId": {
+          "type": "string",
+          "description": "Stable example ID."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Parent resource slug."
+        },
+        "title": {
+          "type": "string",
+          "description": "Example title (3 to 140 characters)."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Example explanation (0 to 1000 characters)."
+        },
+        "previewType": {
+          "type": "string",
+          "enum": ["html-css-js", "react", "svg", "canvas", "three-webgl"],
+          "description": "Preview engine type."
+        },
+        "codeHtml": {
+          "type": "string",
+          "description": "HTML buffer (0 to 25000 characters)."
+        },
+        "codeCss": {
+          "type": "string",
+          "description": "CSS buffer (0 to 25000 characters)."
+        },
+        "codeJs": {
+          "type": "string",
+          "description": "JS/TSX buffer (0 to 25000 characters)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "True when parent resource is published."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "Author UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "exampleId",
+        "resourceSlug",
+        "title",
+        "summary",
+        "previewType",
+        "codeHtml",
+        "codeCss",
+        "codeJs",
+        "isPublic",
+        "authorUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsImplementationVariantDoc": {
+      "title": "CmsImplementationVariantDoc",
+      "description": "Framework or language implementation variant stored in /cms_implementation_variants/{variantId}.",
+      "type": "object",
+      "properties": {
+        "variantId": {
+          "type": "string",
+          "description": "Stable variant ID (e.g. '{resourceSlug}--react-tsx')."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Parent resource slug."
+        },
+        "framework": {
+          "type": "string",
+          "description": "Target framework (e.g. React 19, Vanilla Web, CSS Houdini)."
+        },
+        "language": {
+          "type": "string",
+          "description": "Implementation language (e.g. tsx, css, html, js)."
+        },
+        "title": {
+          "type": "string",
+          "description": "Variant title."
+        },
+        "codeSnippet": {
+          "type": "string",
+          "description": "Source code implementation (0 to 30000 characters)."
+        },
+        "dependenciesList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required package dependencies (up to 15 items)."
+        },
+        "installCommand": {
+          "type": "string",
+          "description": "CLI installation command (0 to 500 characters)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "True when parent resource is published."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "Author UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "variantId",
+        "resourceSlug",
+        "framework",
+        "language",
+        "title",
+        "codeSnippet",
+        "dependenciesList",
+        "installCommand",
+        "isPublic",
+        "authorUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsPreviewConfigDoc": {
+      "title": "CmsPreviewConfigDoc",
+      "description": "Normalized preview configuration record stored in /cms_preview_configs/{configId}.",
+      "type": "object",
+      "properties": {
+        "configId": {
+          "type": "string",
+          "description": "Stable preview configuration ID matching resourceSlug."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Target resource slug."
+        },
+        "previewType": {
+          "type": "string",
+          "enum": ["html-css-js", "react", "svg", "canvas", "three-webgl"],
+          "description": "Sandbox execution engine template."
+        },
+        "defaultViewport": {
+          "type": "string",
+          "enum": ["desktop", "tablet", "mobile"],
+          "description": "Default device viewport preset."
+        },
+        "supportedViewports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Supported device viewports (up to 5 items)."
+        },
+        "backgroundTheme": {
+          "type": "string",
+          "enum": ["adaptive", "dark", "light", "grid"],
+          "description": "Default stage background mode."
+        },
+        "reducedMotionDefault": {
+          "type": "boolean",
+          "description": "Whether reduced-motion mode is active by default."
+        },
+        "sandboxPolicy": {
+          "type": "string",
+          "description": "Iframe sandbox policy attribute (e.g. 'allow-scripts')."
+        },
+        "controlsSchemaJson": {
+          "type": "string",
+          "description": "Serialized parameter control schema specification (0 to 5000 characters)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "True when parent resource is published."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "Editor UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "configId",
+        "resourceSlug",
+        "previewType",
+        "defaultViewport",
+        "supportedViewports",
+        "backgroundTheme",
+        "reducedMotionDefault",
+        "sandboxPolicy",
+        "controlsSchemaJson",
+        "isPublic",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsTechnologyDoc": {
+      "title": "CmsTechnologyDoc",
+      "description": "Normalized technology reference record stored in /cms_technologies/{techSlug}.",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Kebab-case technology slug."
+        },
+        "name": {
+          "type": "string",
+          "description": "Canonical technology name (2 to 100 characters)."
+        },
+        "category": {
+          "type": "string",
+          "description": "Technology domain (e.g. Web Standard, UI Framework, Graphics Engine)."
+        },
+        "version": {
+          "type": "string",
+          "description": "Specification or package version."
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "Official specification or documentation URL."
+        },
+        "description": {
+          "type": "string",
+          "description": "Technical overview (0 to 600 characters)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "deprecated"],
+          "description": "Technology lifecycle status."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "Editor UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "slug",
+        "name",
+        "category",
+        "version",
+        "documentationUrl",
+        "description",
+        "status",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsTagDoc": {
+      "title": "CmsTagDoc",
+      "description": "Normalized tag reference record stored in /cms_tags/{tagSlug}.",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Kebab-case tag slug."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display tag label."
+        },
+        "description": {
+          "type": "string",
+          "description": "Semantic meaning of this tag (0 to 400 characters)."
+        },
+        "categorySlug": {
+          "type": "string",
+          "description": "Primary associated category slug."
+        },
+        "usageCount": {
+          "type": "number",
+          "description": "Number of published resources referencing this tag."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Tag lifecycle status."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "Editor UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "slug",
+        "name",
+        "description",
+        "categorySlug",
+        "usageCount",
+        "status",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsResourceRelationshipDoc": {
+      "title": "CmsResourceRelationshipDoc",
+      "description": "Normalized directed graph relationship between two encyclopedia resources stored in /cms_resource_relationships/{relationshipId}.",
+      "type": "object",
+      "properties": {
+        "relationshipId": {
+          "type": "string",
+          "description": "Deterministic ID '{sourceResourceSlug}--{relationType}--{targetResourceSlug}'."
+        },
+        "sourceResourceSlug": {
+          "type": "string",
+          "description": "Origin resource slug."
+        },
+        "targetResourceSlug": {
+          "type": "string",
+          "description": "Destination resource slug."
+        },
+        "relationType": {
+          "type": "string",
+          "enum": ["related", "prerequisite", "alternative", "extends"],
+          "description": "Semantic relationship classification."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional architectural relationship rationale (0 to 400 characters)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "True when source resource is published."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "Editor UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp."
+        }
+      },
+      "required": [
+        "relationshipId",
+        "sourceResourceSlug",
+        "targetResourceSlug",
+        "relationType",
+        "notes",
+        "isPublic",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
     "UserSubmissionDoc": {
       "title": "UserSubmissionDoc",
       "description": "Moderated community submission or resource issue report stored in /cms_submissions/{submissionId}. Never executes or publishes automatically.",
@@ -778,6 +1387,148 @@
         "updatedAt"
       ]
     },
+    "CmsReviewDoc": {
+      "title": "CmsReviewDoc",
+      "description": "Formal editorial review record stored in /cms_reviews/{reviewId} capturing reviewer decision, checklist verification score, and notes.",
+      "type": "object",
+      "properties": {
+        "reviewId": {
+          "type": "string",
+          "description": "Unique review record ID."
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["resource", "submission"],
+          "description": "Entity type reviewed."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "Target resourceSlug or submissionId."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Associated resource slug."
+        },
+        "reviewerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the Reviewer/Admin."
+        },
+        "reviewerName": {
+          "type": "string",
+          "description": "Display name of the reviewer."
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["approved", "rejected", "changes_requested"],
+          "description": "Editorial review outcome."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Detailed review feedback (1 to 1500 characters)."
+        },
+        "checklistPassedCount": {
+          "type": "number",
+          "description": "Number of preview validation checks passed (0 to 7)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the review was recorded."
+        }
+      },
+      "required": [
+        "reviewId",
+        "targetType",
+        "targetId",
+        "resourceSlug",
+        "reviewerUid",
+        "reviewerName",
+        "decision",
+        "notes",
+        "checklistPassedCount",
+        "createdAt"
+      ]
+    },
+    "CmsStorageAssetDoc": {
+      "title": "CmsStorageAssetDoc",
+      "description": "Secure media & storage metadata record stored in /cms_storage_assets/{assetId} enforcing bucket separation, file size, extension, content type, and public/private authorization.",
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "description": "Unique storage asset ID."
+        },
+        "bucketNamespace": {
+          "type": "string",
+          "enum": [
+            "resource-thumbnails",
+            "verified-visual-references",
+            "user-uploads",
+            "admin-assets"
+          ],
+          "description": "Isolated storage bucket namespace."
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Uploader Firebase Auth UID."
+        },
+        "fileName": {
+          "type": "string",
+          "description": "Sanitized file name with validated extension."
+        },
+        "fileExtension": {
+          "type": "string",
+          "enum": [".png", ".jpg", ".jpeg", ".webp", ".avif", ".svg"],
+          "description": "Validated image/vector file extension."
+        },
+        "contentType": {
+          "type": "string",
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "image/avif",
+            "image/svg+xml"
+          ],
+          "description": "Validated MIME content type."
+        },
+        "sizeBytes": {
+          "type": "number",
+          "description": "Validated file size in bytes (1 to 5242880)."
+        },
+        "url": {
+          "type": "string",
+          "description": "HTTPS asset reference URL."
+        },
+        "associatedResourceSlug": {
+          "type": "string",
+          "description": "Optional linked encyclopedia resource slug."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["private", "public"],
+          "description": "Private files are never exposed publicly without authorization."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of asset registration."
+        }
+      },
+      "required": [
+        "assetId",
+        "bucketNamespace",
+        "ownerUid",
+        "fileName",
+        "fileExtension",
+        "contentType",
+        "sizeBytes",
+        "url",
+        "associatedResourceSlug",
+        "visibility",
+        "createdAt"
+      ]
+    },
     "CmsAuditLogDoc": {
       "title": "CmsAuditLogDoc",
       "description": "Immutable append-only audit log entry recording administrative actions, workflow transitions, category migrations, and role changes.",
@@ -850,6 +1601,12 @@
       },
       "description": "User-curated resource collections supporting owner CRUD and public/private visibility."
     },
+    "/collections/{collectionId}/items/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/CollectionItemDoc"
+      },
+      "description": "Normalized collection items inside a user collection supporting scalable ordered membership."
+    },
     "/experiments/{experimentId}": {
       "schema": {
         "$ref": "#/entities/PlaygroundExperiment"
@@ -874,11 +1631,71 @@
       },
       "description": "CMS-managed taxonomy categories supporting nested subcategory hierarchies, ordering, featured flags, and safe category merge/reassignment."
     },
+    "/cms_subcategories/{subcategoryId}": {
+      "schema": {
+        "$ref": "#/entities/CmsSubcategoryDoc"
+      },
+      "description": "Normalized hierarchical subcategory records linked to parent categories and optional parent subcategories."
+    },
+    "/cms_resource_revisions/{revisionId}": {
+      "schema": {
+        "$ref": "#/entities/CmsResourceRevisionDoc"
+      },
+      "description": "Immutable versioned resource revision snapshots tracking schemaVersion and sample-seed vs verified-editorial origin."
+    },
+    "/cms_resource_examples/{exampleId}": {
+      "schema": {
+        "$ref": "#/entities/CmsResourceExampleDoc"
+      },
+      "description": "Structured runnable demonstration examples associated with encyclopedia resources."
+    },
+    "/cms_implementation_variants/{variantId}": {
+      "schema": {
+        "$ref": "#/entities/CmsImplementationVariantDoc"
+      },
+      "description": "Multi-framework and multi-language implementation variants for encyclopedia resources."
+    },
+    "/cms_preview_configs/{configId}": {
+      "schema": {
+        "$ref": "#/entities/CmsPreviewConfigDoc"
+      },
+      "description": "Normalized sandbox preview configuration and customization parameter schema records."
+    },
+    "/cms_technologies/{techSlug}": {
+      "schema": {
+        "$ref": "#/entities/CmsTechnologyDoc"
+      },
+      "description": "Normalized technology reference registry records."
+    },
+    "/cms_tags/{tagSlug}": {
+      "schema": {
+        "$ref": "#/entities/CmsTagDoc"
+      },
+      "description": "Normalized taxonomy tag dictionary and usage counter records."
+    },
+    "/cms_resource_relationships/{relationshipId}": {
+      "schema": {
+        "$ref": "#/entities/CmsResourceRelationshipDoc"
+      },
+      "description": "Directed graph relationship edges (related, prerequisite, alternative, extends) between encyclopedia resources."
+    },
     "/cms_submissions/{submissionId}": {
       "schema": {
         "$ref": "#/entities/UserSubmissionDoc"
       },
       "description": "Moderated user resource submissions and issue reports. Defaults to pending_review and never publishes or executes automatically."
+    },
+    "/cms_reviews/{reviewId}": {
+      "schema": {
+        "$ref": "#/entities/CmsReviewDoc"
+      },
+      "description": "Formal editorial review decisions and validation gate scores recorded by Reviewers and Administrators."
+    },
+    "/cms_storage_assets/{assetId}": {
+      "schema": {
+        "$ref": "#/entities/CmsStorageAssetDoc"
+      },
+      "description": "Secure media and storage asset metadata separating resource-thumbnails, verified-visual-references, user-uploads, and admin-assets."
     },
     "/cms_audit_logs/{logId}": {
       "schema": {

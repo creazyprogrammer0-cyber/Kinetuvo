@@ -92,6 +92,21 @@ import {
   compileCmsResourcePreviewSrcDoc,
   evaluateCmsResourcePublishReadiness,
 } from '@/lib/admin/preview-validator';
+import {
+  AdminService,
+  DalObservabilityLogger,
+  ResourceService,
+  SearchService,
+  StorageAssetService,
+} from '@/lib/dal/services';
+import {
+  AllowedStorageMimeType,
+  DalObservabilityLogEntry,
+  DalStorageAssetRecord,
+  IdempotentMigrationReport,
+  LiveVerificationSuiteReport,
+  StorageBucketNamespace,
+} from '@/lib/dal/types';
 
 interface SecurityRuleContext {
   path: string;
@@ -105,7 +120,8 @@ type AdminMainSection =
   | 'editor'
   | 'categories'
   | 'submissions'
-  | 'roles-audit';
+  | 'roles-audit'
+  | 'dal-architecture';
 
 type EditorFieldGroupTab =
   | '1-identity'
@@ -280,9 +296,40 @@ export function AdminCmsWorkbench() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleTier, setNewRoleTier] = useState<AdminRoleType>('editor');
 
+  // 8. Backend DAL, Idempotent Migration, Storage Asset Validation & Live Verification State
+  const [migrationReport, setMigrationReport] =
+    useState<IdempotentMigrationReport | null>(null);
+  const [verificationReport, setVerificationReport] =
+    useState<LiveVerificationSuiteReport | null>(null);
+  const [dalTelemetryEntries, setDalTelemetryEntries] = useState<
+    DalObservabilityLogEntry[]
+  >([]);
+  const [registeredStorageAssets, setRegisteredStorageAssets] = useState<
+    DalStorageAssetRecord[]
+  >([]);
+  const [storageBucketInput, setStorageBucketInput] =
+    useState<StorageBucketNamespace>('resource-thumbnails');
+  const [storageFileNameInput, setStorageFileNameInput] = useState(
+    'spring-physics-surface-card.webp'
+  );
+  const [storageUrlInput, setStorageUrlInput] = useState(
+    'https://picsum.photos/seed/spring-card/1200/675.webp'
+  );
+  const [storageMimeInput, setStorageMimeInput] =
+    useState<AllowedStorageMimeType>('image/webp');
+  const [storageBytesInput, setStorageBytesInput] = useState<number>(245760);
+  const [storageVisibilityInput, setStorageVisibilityInput] = useState<
+    'public' | 'private'
+  >('public');
+
   const activeUid = user?.uid ?? null;
   const activeEmail = user?.email ?? null;
   const isEmailVerified = Boolean(user?.emailVerified);
+
+  // Keep the global public search index synchronized with Firestore publication status
+  useEffect(() => {
+    SearchService.syncCmsCatalogToSearchIndex(cmsResources);
+  }, [cmsResources]);
 
   // Listen for sandbox runtime error messages from the live preview iframe
   useEffect(() => {
@@ -1066,27 +1113,37 @@ export function AdminCmsWorkbench() {
         });
       }
 
-      setIsEditingExistingDoc(true);
-      setEditorDraft((prev) => ({
-        ...prev,
+      const savedRecord: CmsResourceRecord = {
         ...recordToSave,
         slug: cleanSlug,
         status: targetStatus,
         revisionNumber: basePayload.revisionNumber,
         publishedAtIso: basePayload.publishedAtIso,
         lastVerifiedIso: basePayload.lastVerifiedIso,
-      }));
+      };
+
+      // Persist normalized satellite graph (/cms_resource_revisions, /cms_preview_configs, /cms_implementation_variants, /cms_resource_examples) and update search index
+      await ResourceService.saveResourceAndNormalizedGraph(
+        savedRecord,
+        targetStatus,
+        'verified-editorial',
+        `Editorial save (${targetStatus}) via Admin CMS Workbench.`
+      );
+      setDalTelemetryEntries(DalObservabilityLogger.getRecentEntries());
+
+      setIsEditingExistingDoc(true);
+      setEditorDraft(savedRecord);
 
       await writeAuditLog(
         `resource.${targetStatus}`,
         'resource',
         cleanSlug,
-        `Transitioned "${basePayload.title}" (${cleanSlug}) to [${targetStatus.toUpperCase()}] (Rev #${basePayload.revisionNumber}).`
+        `Transitioned "${basePayload.title}" (${cleanSlug}) to [${targetStatus.toUpperCase()}] (Rev #${basePayload.revisionNumber}) & synchronized normalized DAL graph + public search index.`
       );
 
       setStatusNotice({
         tone: 'success',
-        text: `Saved "${basePayload.title}" (${cleanSlug}) with status [${targetStatus.toUpperCase()}] · Revision #${basePayload.revisionNumber}.`,
+        text: `Saved "${basePayload.title}" (${cleanSlug}) with status [${targetStatus.toUpperCase()}] · Revision #${basePayload.revisionNumber} (Normalized DAL Graph & Search Index Updated).`,
       });
     } catch (err) {
       reportRuleFailure(
@@ -1136,23 +1193,23 @@ export function AdminCmsWorkbench() {
     });
   };
 
-  // Delete a CMS resource with confirmation
+  // Delete a CMS resource with confirmation and purge from public search index
   const handleConfirmDeleteResource = async () => {
     if (!deleteTargetSlug || !user || !roleCapabilities?.canDeleteResources)
       return;
     setIsBusy(true);
-    const db = getFirebaseDb();
     try {
-      await deleteDoc(doc(db, 'cms_resources', deleteTargetSlug));
+      await ResourceService.deleteResourceAndPurgeSearchIndex(deleteTargetSlug);
+      setDalTelemetryEntries(DalObservabilityLogger.getRecentEntries());
       await writeAuditLog(
         'resource.delete',
         'resource',
         deleteTargetSlug,
-        `Permanently deleted CMS resource "${deleteTargetSlug}".`
+        `Permanently deleted CMS resource "${deleteTargetSlug}" and purged from public search index.`
       );
       setStatusNotice({
         tone: 'warning',
-        text: `Deleted CMS resource "${deleteTargetSlug}".`,
+        text: `Deleted CMS resource "${deleteTargetSlug}" and purged it from the public search index.`,
       });
       setDeleteTargetSlug(null);
     } catch (err) {
@@ -1166,6 +1223,82 @@ export function AdminCmsWorkbench() {
     } finally {
       setIsBusy(false);
     }
+  };
+
+  // Run Idempotent Seed & Schema v2 Migration across normalized Firestore collections
+  const handleRunIdempotentMigration = async () => {
+    if (!user || !roleCapabilities?.canPublishAndManageTaxonomy) return;
+    setIsBusy(true);
+    setStatusNotice(null);
+    const res = await AdminService.runIdempotentSeedAndSchemaMigration();
+    setDalTelemetryEntries(DalObservabilityLogger.getRecentEntries());
+    if (res.ok && res.data) {
+      setMigrationReport(res.data);
+      await writeAuditLog(
+        'dal.migration.v2',
+        'resource',
+        'schema-v2-seed-migration',
+        `Executed idempotent schema v2 seed migration: seeded ${res.data.categoriesSeeded} categories, ${res.data.subcategoriesSeeded} subcategories, ${res.data.resourcesSeeded} resources (${res.data.skippedExistingRecords} existing records preserved).`
+      );
+      setStatusNotice({
+        tone: 'success',
+        text: `Idempotent Schema v2 Migration Complete (${res.latencyMs}ms) · Preserved ${res.data.skippedExistingRecords} existing records without duplication.`,
+      });
+    } else {
+      setStatusNotice({
+        tone: 'error',
+        text: res.error?.message || 'Migration failed.',
+      });
+    }
+    setIsBusy(false);
+  };
+
+  // Run 6-Check Live Firestore Read/Write & Security Verification Suite
+  const handleRunLiveVerificationSuite = async () => {
+    if (!user) return;
+    setIsBusy(true);
+    setStatusNotice(null);
+    const report = await AdminService.runLiveDatabaseVerificationSuite();
+    setDalTelemetryEntries(DalObservabilityLogger.getRecentEntries());
+    setVerificationReport(report);
+    setStatusNotice({
+      tone: report.allPassed ? 'success' : 'warning',
+      text: `Live Firestore Verification Suite: ${report.passedCount}/${report.totalChecks} checks passed.`,
+    });
+    setIsBusy(false);
+  };
+
+  // Validate & Register Isolated Storage Asset in /cms_storage_assets
+  const handleRegisterValidatedStorageAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsBusy(true);
+    setStatusNotice(null);
+    const res = await StorageAssetService.registerValidatedStorageAsset({
+      bucketNamespace: storageBucketInput,
+      fileName: storageFileNameInput,
+      url: storageUrlInput,
+      contentType: storageMimeInput,
+      sizeBytes: Number(storageBytesInput),
+      visibility: storageVisibilityInput,
+      associatedResourceSlug: synchronizedDraft.slug || 'general-asset',
+    });
+    setDalTelemetryEntries(DalObservabilityLogger.getRecentEntries());
+    if (res.ok && res.data) {
+      setRegisteredStorageAssets((prev) => [res.data!, ...prev]);
+      setStatusNotice({
+        tone: 'success',
+        text: `Validated & stored asset "${res.data.fileName}" in bucket [${res.data.bucketNamespace}] with visibility [${res.data.visibility}].`,
+      });
+    } else {
+      setStatusNotice({
+        tone: 'error',
+        text:
+          res.error?.message ||
+          'Storage validation blocked asset registration.',
+      });
+    }
+    setIsBusy(false);
   };
 
   // Section 6: Save or Update Category in /cms_categories
@@ -1953,6 +2086,12 @@ export function AdminCmsWorkbench() {
                   icon: Shield,
                   count: cmsAuditLogs.length,
                 },
+                {
+                  id: 'dal-architecture',
+                  label: 'DAL, Migration & Verify',
+                  icon: FolderGit2,
+                  count: '20 Col',
+                },
               ] as const
             ).map((item) => {
               const Icon = item.icon;
@@ -2176,6 +2315,14 @@ export function AdminCmsWorkbench() {
                         </span>
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection('dal-architecture')}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ds-accent-primary)] bg-[var(--ds-surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--ds-accent-primary)] hover:bg-[var(--ds-accent-primary)] hover:text-white"
+                    >
+                      <FolderGit2 className="h-3.5 w-3.5" />
+                      <span>DAL, Migration &amp; Live Verification</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setActiveSection('editor')}
@@ -4537,6 +4684,440 @@ export function AdminCmsWorkbench() {
                         <div className="font-mono text-[11px] text-[var(--ds-text-muted)] tabular-nums">
                           {log.actorName} ({log.actorRole}) ·{' '}
                           {log.createdAtIso.slice(0, 19)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ===============================================================
+           * SECTION 8–11: BACKEND DAL, IDEMPOTENT MIGRATION, STORAGE & LIVE VERIFICATION
+           * =============================================================== */}
+          {activeSection === 'dal-architecture' && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--ds-border-subtle)] pb-4">
+                <div>
+                  <div className="font-mono text-xs uppercase tracking-wider text-[var(--ds-text-muted)]">
+                    REAL FIRESTORE DAL · 20 COLLECTIONS · SCHEMA V2 MIGRATION &amp;
+                    LIVE VERIFICATION
+                  </div>
+                  <h1 className="mt-1 text-xl font-bold">
+                    Backend Data Access Layer, Idempotent Seed Migration &amp;
+                    Live Security Verification
+                  </h1>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={handleRunLiveVerificationSuite}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    <span>Run 6-Check Live Firestore Verification Suite</span>
+                  </button>
+                  {roleCapabilities.canPublishAndManageTaxonomy && (
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={handleRunIdempotentMigration}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--ds-accent-primary)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-95 disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>Run Idempotent Seed &amp; Schema v2 Migration</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 1. Live Database Read/Write & Security Verification Suite Output */}
+              <div className="rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-1)] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold">
+                      1. Live Firestore Persistence, User Isolation &amp; Search
+                      Synchronization Suite
+                    </h2>
+                    <p className="mt-0.5 text-xs text-[var(--ds-text-secondary)]">
+                      Executes real Firestore writes, reads, owner-isolated queries,
+                      pagination, storage file-type checks, and publish/unpublish
+                      search index purging.
+                    </p>
+                  </div>
+                  {verificationReport && (
+                    <span
+                      className={`font-mono text-xs font-semibold ${
+                        verificationReport.allPassed
+                          ? 'text-emerald-500'
+                          : 'text-amber-500'
+                      }`}
+                    >
+                      {verificationReport.passedCount}/
+                      {verificationReport.totalChecks} PASSED ·{' '}
+                      {verificationReport.executedAtIso.slice(11, 19)}
+                    </span>
+                  )}
+                </div>
+
+                {!verificationReport ? (
+                  <div className="mt-4 rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] p-4 text-xs text-[var(--ds-text-secondary)]">
+                    Click{' '}
+                    <strong>
+                      &quot;Run 6-Check Live Firestore Verification Suite&quot;
+                    </strong>{' '}
+                    above to execute live database persistence and security checks
+                    against your active Firebase project.
+                  </div>
+                ) : (
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {verificationReport.checks.map((chk) => (
+                      <div
+                        key={chk.id}
+                        className="rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] p-3.5 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-[var(--ds-text-primary)]">
+                            {chk.number}. {chk.title}
+                          </span>
+                          <span
+                            className={`font-mono text-[11px] font-semibold uppercase ${
+                              chk.passed ? 'text-emerald-500' : 'text-red-400'
+                            }`}
+                          >
+                            {chk.passed ? 'PASS' : 'FAIL'} · {chk.latencyMs}ms
+                          </span>
+                        </div>
+                        <div className="mt-1 font-mono text-[11px] text-[var(--ds-accent-primary)]">
+                          {chk.category}
+                        </div>
+                        <p className="mt-1.5 text-xs leading-relaxed text-[var(--ds-text-secondary)]">
+                          {chk.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Idempotent Seed & Schema v2 Migration Report */}
+              <div className="rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-1)] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold">
+                      2. Idempotent Seed &amp; Schema v2 Migration Engine
+                    </h2>
+                    <p className="mt-0.5 text-xs text-[var(--ds-text-secondary)]">
+                      Populates deterministic documents across{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_categories
+                      </code>
+                      ,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_subcategories
+                      </code>
+                      ,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_technologies
+                      </code>
+                      , <code className="font-mono text-[11px]">/cms_tags</code>,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_resources
+                      </code>
+                      ,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_preview_configs
+                      </code>
+                      ,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_implementation_variants
+                      </code>
+                      ,{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_resource_examples
+                      </code>
+                      , and{' '}
+                      <code className="font-mono text-[11px]">
+                        /cms_resource_relationships
+                      </code>
+                      . Distinguishes{' '}
+                      <code className="font-mono text-[11px]">sample-seed</code>{' '}
+                      from{' '}
+                      <code className="font-mono text-[11px]">
+                        verified-editorial
+                      </code>{' '}
+                      and never overwrites existing documents.
+                    </p>
+                  </div>
+                  {migrationReport && (
+                    <span className="font-mono text-xs text-emerald-500">
+                      Schema v{migrationReport.schemaVersion} ·{' '}
+                      {migrationReport.executedAtIso.slice(11, 19)}
+                    </span>
+                  )}
+                </div>
+
+                {migrationReport && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    {[
+                      {
+                        label: 'Categories Seeded',
+                        val: migrationReport.categoriesSeeded,
+                      },
+                      {
+                        label: 'Subcategories Seeded',
+                        val: migrationReport.subcategoriesSeeded,
+                      },
+                      {
+                        label: 'Resources Seeded',
+                        val: migrationReport.resourcesSeeded,
+                      },
+                      {
+                        label: 'Previews & Variants',
+                        val:
+                          migrationReport.previewConfigsSynced +
+                          migrationReport.implementationVariantsSynced +
+                          migrationReport.resourceExamplesSynced,
+                      },
+                      {
+                        label: 'Existing Preserved',
+                        val: migrationReport.skippedExistingRecords,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] p-3"
+                      >
+                        <div className="font-mono text-[11px] text-[var(--ds-text-muted)]">
+                          {item.label}
+                        </div>
+                        <div className="mt-1 font-mono text-lg font-bold tabular-nums">
+                          {item.val}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Storage Namespace & Media Security Validator */}
+              <div className="rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-1)] p-5">
+                <h2 className="text-sm font-bold">
+                  3. Isolated Storage Namespaces &amp; Media Security Validator (
+                  <code className="font-mono text-xs">/cms_storage_assets</code>)
+                </h2>
+                <p className="mt-0.5 text-xs text-[var(--ds-text-secondary)]">
+                  Enforces extension whitelist (.png, .jpg, .jpeg, .webp, .avif,
+                  .svg), MIME content type, per-bucket byte limits, and prevents
+                  unauthorized public exposure of user uploads (
+                  <code className="font-mono text-[11px]">user-uploads</code>{' '}
+                  must remain{' '}
+                  <code className="font-mono text-[11px]">private</code>).
+                </p>
+
+                <form
+                  onSubmit={handleRegisterValidatedStorageAsset}
+                  className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
+                >
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase text-[var(--ds-text-muted)]">
+                      Storage Bucket Namespace
+                    </label>
+                    <select
+                      value={storageBucketInput}
+                      onChange={(e) => {
+                        const bucket = e.target.value as StorageBucketNamespace;
+                        setStorageBucketInput(bucket);
+                        setStorageVisibilityInput(
+                          bucket === 'user-uploads' ? 'private' : 'public'
+                        );
+                      }}
+                      className="mt-1 w-full rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2.5 py-1.5 text-xs"
+                    >
+                      <option value="resource-thumbnails">
+                        resource-thumbnails (Max 2MB)
+                      </option>
+                      <option value="verified-visual-references">
+                        verified-visual-references (Max 5MB)
+                      </option>
+                      <option value="user-uploads">
+                        user-uploads (Private User Only · Max 2MB)
+                      </option>
+                      <option value="admin-assets">
+                        admin-assets (Admin Only · Max 5MB)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase text-[var(--ds-text-muted)]">
+                      File Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={storageFileNameInput}
+                      onChange={(e) => setStorageFileNameInput(e.target.value)}
+                      className="mt-1 w-full rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2.5 py-1.5 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase text-[var(--ds-text-muted)]">
+                      Visibility Policy
+                    </label>
+                    <select
+                      value={storageVisibilityInput}
+                      onChange={(e) =>
+                        setStorageVisibilityInput(
+                          e.target.value as 'public' | 'private'
+                        )
+                      }
+                      className="mt-1 w-full rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2.5 py-1.5 text-xs"
+                    >
+                      <option value="public">public</option>
+                      <option value="private">private</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase text-[var(--ds-text-muted)]">
+                      HTTPS Media URL
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={storageUrlInput}
+                      onChange={(e) => setStorageUrlInput(e.target.value)}
+                      className="mt-1 w-full rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2.5 py-1.5 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase text-[var(--ds-text-muted)]">
+                      MIME Content-Type &amp; Size (Bytes)
+                    </label>
+                    <div className="mt-1 flex gap-2">
+                      <select
+                        value={storageMimeInput}
+                        onChange={(e) =>
+                          setStorageMimeInput(
+                            e.target.value as AllowedStorageMimeType
+                          )
+                        }
+                        className="w-1/2 rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2 py-1.5 font-mono text-xs"
+                      >
+                        <option value="image/webp">image/webp</option>
+                        <option value="image/png">image/png</option>
+                        <option value="image/jpeg">image/jpeg</option>
+                        <option value="image/avif">image/avif</option>
+                        <option value="image/svg+xml">image/svg+xml</option>
+                      </select>
+                      <input
+                        type="number"
+                        min={1}
+                        max={5242880}
+                        value={storageBytesInput}
+                        onChange={(e) =>
+                          setStorageBytesInput(Number(e.target.value))
+                        }
+                        className="w-1/2 rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2 py-1.5 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      disabled={isBusy}
+                      className="w-full rounded bg-[var(--ds-accent-primary)] px-3.5 py-1.5 text-xs font-semibold text-white hover:opacity-95 disabled:opacity-50"
+                    >
+                      Validate &amp; Register Storage Asset
+                    </button>
+                  </div>
+                </form>
+
+                {registeredStorageAssets.length > 0 && (
+                  <div className="mt-4 divide-y divide-[var(--ds-border-subtle)] rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] text-xs">
+                    {registeredStorageAssets.map((asset) => (
+                      <div
+                        key={asset.assetId}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                      >
+                        <div className="font-mono">
+                          <span className="font-semibold text-[var(--ds-accent-primary)]">
+                            [{asset.bucketNamespace}]
+                          </span>{' '}
+                          {asset.fileName} ({asset.contentType} ·{' '}
+                          {Math.round(asset.sizeBytes / 1024)} KB)
+                        </div>
+                        <span className="font-mono text-[11px] text-emerald-500">
+                          {asset.visibility}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. PII-Redacted DAL Observability Telemetry Stream */}
+              <div className="rounded-lg border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-1)]">
+                <div className="flex items-center justify-between border-b border-[var(--ds-border-subtle)] px-4 py-3">
+                  <div>
+                    <h2 className="text-sm font-bold">
+                      4. PII-Redacted DAL Observability Log
+                    </h2>
+                    <p className="text-xs text-[var(--ds-text-secondary)]">
+                      Tracks service operations, retries, and latency while
+                      automatically scrubbing emails and bearer tokens.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDalTelemetryEntries(
+                        DalObservabilityLogger.getRecentEntries()
+                      )
+                    }
+                    className="rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-2)] px-2.5 py-1 font-mono text-xs"
+                  >
+                    Refresh ({dalTelemetryEntries.length})
+                  </button>
+                </div>
+
+                {dalTelemetryEntries.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[var(--ds-text-muted)]">
+                    Run the Live Verification Suite, Idempotent Migration, or save
+                    a resource to inspect DAL observability telemetry.
+                  </div>
+                ) : (
+                  <div className="max-h-72 divide-y divide-[var(--ds-border-subtle)] overflow-auto text-xs">
+                    {dalTelemetryEntries.slice(0, 25).map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
+                      >
+                        <div>
+                          <span
+                            className={`font-mono font-semibold ${
+                              entry.status === 'ok'
+                                ? 'text-emerald-500'
+                                : entry.status === 'retried'
+                                  ? 'text-amber-500'
+                                  : 'text-red-400'
+                            }`}
+                          >
+                            [{entry.service}.{entry.operation}]
+                          </span>{' '}
+                          <span className="font-mono text-[11px] text-[var(--ds-text-muted)]">
+                            {entry.collectionPath}
+                          </span>{' '}
+                          <span>— {entry.sanitizedSummary}</span>
+                        </div>
+                        <div className="font-mono text-[11px] text-[var(--ds-text-muted)] tabular-nums">
+                          {entry.latencyMs}ms · {entry.timestampIso.slice(11, 19)}
                         </div>
                       </div>
                     ))}

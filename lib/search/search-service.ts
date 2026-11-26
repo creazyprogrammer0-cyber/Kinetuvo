@@ -147,17 +147,88 @@ function mapClassificationToEntityKind(
 }
 
 /* ============================================================================
- * 3. INDEXED CORPUS BUILDER (SERVER-SIDE INDEX)
+ * 3. INDEXED CORPUS BUILDER & DYNAMIC SEARCH INDEX ADAPTER (SECTION 8)
  * ========================================================================== */
+
+const dynamicPublishedResourceIndex = new Map<string, DesignResource>();
+const unpublishedOrDeletedSlugsSet = new Set<string>();
+
+/**
+ * Indexes or updates a published resource in the public search index.
+ * Unpublished resources are rejected and purged automatically.
+ */
+export function indexPublishedResourceInSearch(
+  resource: DesignResource,
+  status: string = 'published'
+): void {
+  if (status !== 'published') {
+    removeResourceFromPublicSearchIndex(resource.slug);
+    return;
+  }
+  unpublishedOrDeletedSlugsSet.delete(resource.slug);
+  dynamicPublishedResourceIndex.set(resource.slug, resource);
+}
+
+/**
+ * Immediately removes an unpublished or deleted resource from the public search index.
+ */
+export function removeResourceFromPublicSearchIndex(slug: string): void {
+  dynamicPublishedResourceIndex.delete(slug);
+  unpublishedOrDeletedSlugsSet.add(slug);
+}
+
+/**
+ * Synchronizes a batch of CMS records with the public search index.
+ */
+export function syncCatalogToPublicSearchIndex(
+  publishedResources: DesignResource[],
+  unpublishedSlugs: string[] = []
+): void {
+  for (const slug of unpublishedSlugs) {
+    removeResourceFromPublicSearchIndex(slug);
+  }
+  for (const res of publishedResources) {
+    indexPublishedResourceInSearch(res, 'published');
+  }
+}
+
+/**
+ * Checks if a given resource slug is currently present in the public search index.
+ */
+export function isResourceInPublicSearchIndex(slug: string): boolean {
+  if (unpublishedOrDeletedSlugsSet.has(slug)) return false;
+  if (dynamicPublishedResourceIndex.has(slug)) return true;
+  return FOUNDATION_RESOURCES.some((r) => r.slug === slug);
+}
+
+/**
+ * Returns the active public resource list for indexing (merging published CMS resources
+ * and excluding any unpublished or deleted resource slugs).
+ */
+export function getActivePublicIndexedResources(): DesignResource[] {
+  const merged = new Map<string, DesignResource>();
+  for (const seed of FOUNDATION_RESOURCES) {
+    if (!unpublishedOrDeletedSlugsSet.has(seed.slug)) {
+      merged.set(seed.slug, seed);
+    }
+  }
+  for (const [slug, cmsRes] of dynamicPublishedResourceIndex.entries()) {
+    if (!unpublishedOrDeletedSlugsSet.has(slug)) {
+      merged.set(slug, cmsRes);
+    }
+  }
+  return Array.from(merged.values());
+}
 
 function buildUnifiedSearchCorpus(
   realViewCounts: Record<string, number> = {},
   realSaveCounts: Record<string, number> = {}
 ): GlobalSearchResultItem[] {
   const corpus: GlobalSearchResultItem[] = [];
+  const activePublicResources = getActivePublicIndexedResources();
 
-  // A. Index all published & preview Encyclopedia Resources
-  for (const res of FOUNDATION_RESOURCES) {
+  // A. Index all published Encyclopedia Resources (excluding unpublished/deleted)
+  for (const res of activePublicResources) {
     const primaryCat = getCategoryBySlug(res.categorySlug);
     const { kind, label } = mapClassificationToEntityKind(res.classification);
     const designStyle = deriveDesignStyleForResource(res);

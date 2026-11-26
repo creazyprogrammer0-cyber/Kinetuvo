@@ -103,30 +103,14 @@ service cloud.firestore {
     // ===============================================================
     function isValidUserProfile(data) {
       return data.keys().hasAll([
-          'uid',
-          'email',
-          'displayName',
-          'photoURL',
-          'roleTitle',
-          'bio',
-          'preferredTheme',
-          'reducedMotion',
-          'recentlyViewedSlugs',
-          'createdAt',
-          'updatedAt'
+          'uid', 'email', 'displayName', 'photoURL', 'roleTitle',
+          'bio', 'preferredTheme', 'reducedMotion', 'recentlyViewedSlugs',
+          'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'uid',
-          'email',
-          'displayName',
-          'photoURL',
-          'roleTitle',
-          'bio',
-          'preferredTheme',
-          'reducedMotion',
-          'recentlyViewedSlugs',
-          'createdAt',
-          'updatedAt'
+          'uid', 'email', 'displayName', 'photoURL', 'roleTitle',
+          'bio', 'preferredTheme', 'reducedMotion', 'recentlyViewedSlugs',
+          'createdAt', 'updatedAt'
         ]) &&
         isBoundedString(data.uid, 1, 128) &&
         isValidEmail(data.email) &&
@@ -143,20 +127,10 @@ service cloud.firestore {
 
     function isValidUserBookmark(data) {
       return data.keys().hasAll([
-          'uid',
-          'resourceSlug',
-          'resourceTitle',
-          'categorySlug',
-          'notes',
-          'createdAt'
+          'uid', 'resourceSlug', 'resourceTitle', 'categorySlug', 'notes', 'createdAt'
         ]) &&
         data.keys().hasOnly([
-          'uid',
-          'resourceSlug',
-          'resourceTitle',
-          'categorySlug',
-          'notes',
-          'createdAt'
+          'uid', 'resourceSlug', 'resourceTitle', 'categorySlug', 'notes', 'createdAt'
         ]) &&
         isBoundedString(data.uid, 1, 128) &&
         isBoundedString(data.resourceSlug, 1, 128) &&
@@ -168,24 +142,12 @@ service cloud.firestore {
 
     function isValidPersonalCollection(data) {
       return data.keys().hasAll([
-          'ownerId',
-          'ownerName',
-          'name',
-          'description',
-          'visibility',
-          'resourceSlugs',
-          'createdAt',
-          'updatedAt'
+          'ownerId', 'ownerName', 'name', 'description', 'visibility',
+          'resourceSlugs', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'ownerId',
-          'ownerName',
-          'name',
-          'description',
-          'visibility',
-          'resourceSlugs',
-          'createdAt',
-          'updatedAt'
+          'ownerId', 'ownerName', 'name', 'description', 'visibility',
+          'resourceSlugs', 'createdAt', 'updatedAt'
         ]) &&
         isBoundedString(data.ownerId, 1, 128) &&
         isBoundedString(data.ownerName, 1, 80) &&
@@ -197,36 +159,37 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidPlaygroundExperiment(data) {
+    function isValidCollectionItemDoc(data) {
       return data.keys().hasAll([
-          'ownerId',
-          'ownerName',
-          'title',
-          'description',
-          'templateCategory',
-          'associatedResourceSlug',
-          'activeFile',
-          'codeHtml',
-          'codeCss',
-          'codeJs',
-          'visibility',
-          'createdAt',
-          'updatedAt'
+          'itemId', 'collectionId', 'ownerId', 'resourceSlug', 'resourceTitle',
+          'categorySlug', 'orderIndex', 'notes', 'visibility', 'createdAt'
         ]) &&
         data.keys().hasOnly([
-          'ownerId',
-          'ownerName',
-          'title',
-          'description',
-          'templateCategory',
-          'associatedResourceSlug',
-          'activeFile',
-          'codeHtml',
-          'codeCss',
-          'codeJs',
-          'visibility',
-          'createdAt',
-          'updatedAt'
+          'itemId', 'collectionId', 'ownerId', 'resourceSlug', 'resourceTitle',
+          'categorySlug', 'orderIndex', 'notes', 'visibility', 'createdAt'
+        ]) &&
+        isBoundedString(data.itemId, 1, 128) &&
+        isBoundedString(data.collectionId, 1, 128) &&
+        isBoundedString(data.ownerId, 1, 128) &&
+        isBoundedString(data.resourceSlug, 1, 128) &&
+        isBoundedString(data.resourceTitle, 1, 160) &&
+        isBoundedString(data.categorySlug, 1, 100) &&
+        data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 1000 &&
+        isBoundedString(data.notes, 0, 500) &&
+        data.visibility is string && (data.visibility == 'private' || data.visibility == 'public') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPlaygroundExperiment(data) {
+      return data.keys().hasAll([
+          'ownerId', 'ownerName', 'title', 'description', 'templateCategory',
+          'associatedResourceSlug', 'activeFile', 'codeHtml', 'codeCss', 'codeJs',
+          'visibility', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'ownerName', 'title', 'description', 'templateCategory',
+          'associatedResourceSlug', 'activeFile', 'codeHtml', 'codeCss', 'codeJs',
+          'visibility', 'createdAt', 'updatedAt'
         ]) &&
         isBoundedString(data.ownerId, 1, 128) &&
         isBoundedString(data.ownerName, 1, 80) &&
@@ -251,22 +214,10 @@ service cloud.firestore {
 
     function isValidAdminRoleAssignment(data) {
       return data.keys().hasAll([
-          'uid',
-          'email',
-          'displayName',
-          'role',
-          'assignedByUid',
-          'createdAt',
-          'updatedAt'
+          'uid', 'email', 'displayName', 'role', 'assignedByUid', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'uid',
-          'email',
-          'displayName',
-          'role',
-          'assignedByUid',
-          'createdAt',
-          'updatedAt'
+          'uid', 'email', 'displayName', 'role', 'assignedByUid', 'createdAt', 'updatedAt'
         ]) &&
         isBoundedString(data.uid, 1, 128) &&
         isValidEmail(data.email) &&
@@ -402,7 +353,6 @@ service cloud.firestore {
         isValidCmsResourceRelationsAndWorkflow(data);
     }
 
-    // Section 5 Preview Validation Gate enforced at the database layer before publishing
     function passesPublishValidationGate(data) {
       return data.previewVerified == true &&
         data.title.size() >= 3 &&
@@ -416,36 +366,14 @@ service cloud.firestore {
 
     function isValidCmsCategoryDoc(data) {
       return data.keys().hasAll([
-          'slug',
-          'code',
-          'name',
-          'shortDescription',
-          'architecturalScope',
-          'iconName',
-          'orderIndex',
-          'isFeatured',
-          'status',
-          'subcategories',
-          'mergedIntoSlug',
-          'updatedByUid',
-          'createdAt',
-          'updatedAt'
+          'slug', 'code', 'name', 'shortDescription', 'architecturalScope',
+          'iconName', 'orderIndex', 'isFeatured', 'status', 'subcategories',
+          'mergedIntoSlug', 'updatedByUid', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'slug',
-          'code',
-          'name',
-          'shortDescription',
-          'architecturalScope',
-          'iconName',
-          'orderIndex',
-          'isFeatured',
-          'status',
-          'subcategories',
-          'mergedIntoSlug',
-          'updatedByUid',
-          'createdAt',
-          'updatedAt'
+          'slug', 'code', 'name', 'shortDescription', 'architecturalScope',
+          'iconName', 'orderIndex', 'isFeatured', 'status', 'subcategories',
+          'mergedIntoSlug', 'updatedByUid', 'createdAt', 'updatedAt'
         ]) &&
         isValidKebabSlug(data.slug) &&
         isBoundedString(data.code, 1, 10) &&
@@ -463,40 +391,242 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidUserSubmissionDoc(data) {
+    function isValidCmsSubcategoryDoc(data) {
       return data.keys().hasAll([
-          'submitterUid',
-          'submitterName',
-          'submissionType',
-          'title',
-          'targetResourceSlug',
-          'categorySlug',
-          'summary',
-          'proposedCodeOrContent',
-          'sourceUrl',
-          'licenseAttestation',
-          'status',
-          'reviewerNotes',
-          'reviewedByUid',
-          'createdAt',
-          'updatedAt'
+          'subcategoryId', 'slug', 'name', 'parentCategorySlug', 'parentSubcategoryId',
+          'depth', 'description', 'orderIndex', 'status', 'updatedByUid',
+          'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'submitterUid',
-          'submitterName',
-          'submissionType',
-          'title',
-          'targetResourceSlug',
-          'categorySlug',
-          'summary',
-          'proposedCodeOrContent',
-          'sourceUrl',
-          'licenseAttestation',
-          'status',
-          'reviewerNotes',
-          'reviewedByUid',
-          'createdAt',
-          'updatedAt'
+          'subcategoryId', 'slug', 'name', 'parentCategorySlug', 'parentSubcategoryId',
+          'depth', 'description', 'orderIndex', 'status', 'updatedByUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isBoundedString(data.subcategoryId, 2, 128) &&
+        isValidKebabSlug(data.slug) &&
+        isBoundedString(data.name, 2, 100) &&
+        isValidKebabSlug(data.parentCategorySlug) &&
+        isBoundedString(data.parentSubcategoryId, 0, 128) &&
+        data.depth is int && data.depth >= 2 && data.depth <= 10 &&
+        isBoundedString(data.description, 0, 500) &&
+        data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 1000 &&
+        data.status is string && (data.status == 'active' || data.status == 'archived') &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsResourceRevisionDoc(data) {
+      return data.keys().hasAll([
+          'revisionId', 'resourceSlug', 'revisionNumber', 'schemaVersion',
+          'dataOrigin', 'title', 'status', 'changeSummary', 'snapshotJson',
+          'authorUid', 'authorName', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'revisionId', 'resourceSlug', 'revisionNumber', 'schemaVersion',
+          'dataOrigin', 'title', 'status', 'changeSummary', 'snapshotJson',
+          'authorUid', 'authorName', 'createdAt'
+        ]) &&
+        isBoundedString(data.revisionId, 2, 128) &&
+        isValidKebabSlug(data.resourceSlug) &&
+        data.revisionNumber is int && data.revisionNumber >= 1 && data.revisionNumber <= 100000 &&
+        data.schemaVersion is int && data.schemaVersion >= 1 && data.schemaVersion <= 100 &&
+        data.dataOrigin is string && (data.dataOrigin == 'sample-seed' || data.dataOrigin == 'verified-editorial') &&
+        isBoundedString(data.title, 3, 140) &&
+        data.status is string && (
+          data.status == 'draft' ||
+          data.status == 'in_review' ||
+          data.status == 'approved' ||
+          data.status == 'published' ||
+          data.status == 'rejected' ||
+          data.status == 'archived'
+        ) &&
+        isBoundedString(data.changeSummary, 1, 500) &&
+        isBoundedString(data.snapshotJson, 2, 60000) &&
+        isBoundedString(data.authorUid, 1, 128) &&
+        isBoundedString(data.authorName, 1, 80) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCmsResourceExampleDoc(data) {
+      return data.keys().hasAll([
+          'exampleId', 'resourceSlug', 'title', 'summary', 'previewType',
+          'codeHtml', 'codeCss', 'codeJs', 'isPublic', 'authorUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'exampleId', 'resourceSlug', 'title', 'summary', 'previewType',
+          'codeHtml', 'codeCss', 'codeJs', 'isPublic', 'authorUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isBoundedString(data.exampleId, 2, 128) &&
+        isValidKebabSlug(data.resourceSlug) &&
+        isBoundedString(data.title, 3, 140) &&
+        isBoundedString(data.summary, 0, 1000) &&
+        data.previewType is string && (
+          data.previewType == 'html-css-js' ||
+          data.previewType == 'react' ||
+          data.previewType == 'svg' ||
+          data.previewType == 'canvas' ||
+          data.previewType == 'three-webgl'
+        ) &&
+        isBoundedString(data.codeHtml, 0, 25000) &&
+        isBoundedString(data.codeCss, 0, 25000) &&
+        isBoundedString(data.codeJs, 0, 25000) &&
+        data.isPublic is bool &&
+        isBoundedString(data.authorUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsImplementationVariantDoc(data) {
+      return data.keys().hasAll([
+          'variantId', 'resourceSlug', 'framework', 'language', 'title',
+          'codeSnippet', 'dependenciesList', 'installCommand', 'isPublic',
+          'authorUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'variantId', 'resourceSlug', 'framework', 'language', 'title',
+          'codeSnippet', 'dependenciesList', 'installCommand', 'isPublic',
+          'authorUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isBoundedString(data.variantId, 2, 128) &&
+        isValidKebabSlug(data.resourceSlug) &&
+        isBoundedString(data.framework, 2, 80) &&
+        isBoundedString(data.language, 1, 40) &&
+        isBoundedString(data.title, 2, 140) &&
+        isBoundedString(data.codeSnippet, 0, 30000) &&
+        isBoundedStringList(data.dependenciesList, 15) &&
+        isBoundedString(data.installCommand, 0, 500) &&
+        data.isPublic is bool &&
+        isBoundedString(data.authorUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsPreviewConfigDoc(data) {
+      return data.keys().hasAll([
+          'configId', 'resourceSlug', 'previewType', 'defaultViewport',
+          'supportedViewports', 'backgroundTheme', 'reducedMotionDefault',
+          'sandboxPolicy', 'controlsSchemaJson', 'isPublic', 'updatedByUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'configId', 'resourceSlug', 'previewType', 'defaultViewport',
+          'supportedViewports', 'backgroundTheme', 'reducedMotionDefault',
+          'sandboxPolicy', 'controlsSchemaJson', 'isPublic', 'updatedByUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isBoundedString(data.configId, 2, 128) &&
+        isValidKebabSlug(data.resourceSlug) &&
+        data.previewType is string && (
+          data.previewType == 'html-css-js' ||
+          data.previewType == 'react' ||
+          data.previewType == 'svg' ||
+          data.previewType == 'canvas' ||
+          data.previewType == 'three-webgl'
+        ) &&
+        data.defaultViewport is string && (
+          data.defaultViewport == 'desktop' ||
+          data.defaultViewport == 'tablet' ||
+          data.defaultViewport == 'mobile'
+        ) &&
+        isBoundedStringList(data.supportedViewports, 5) &&
+        data.backgroundTheme is string && (
+          data.backgroundTheme == 'adaptive' ||
+          data.backgroundTheme == 'dark' ||
+          data.backgroundTheme == 'light' ||
+          data.backgroundTheme == 'grid'
+        ) &&
+        data.reducedMotionDefault is bool &&
+        isBoundedString(data.sandboxPolicy, 1, 120) &&
+        isBoundedString(data.controlsSchemaJson, 0, 5000) &&
+        data.isPublic is bool &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsTechnologyDoc(data) {
+      return data.keys().hasAll([
+          'slug', 'name', 'category', 'version', 'documentationUrl',
+          'description', 'status', 'updatedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'slug', 'name', 'category', 'version', 'documentationUrl',
+          'description', 'status', 'updatedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidKebabSlug(data.slug) &&
+        isBoundedString(data.name, 2, 100) &&
+        isBoundedString(data.category, 2, 80) &&
+        isBoundedString(data.version, 0, 40) &&
+        isBoundedString(data.documentationUrl, 0, 500) &&
+        isBoundedString(data.description, 0, 600) &&
+        data.status is string && (data.status == 'active' || data.status == 'deprecated') &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsTagDoc(data) {
+      return data.keys().hasAll([
+          'slug', 'name', 'description', 'categorySlug', 'usageCount',
+          'status', 'updatedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'slug', 'name', 'description', 'categorySlug', 'usageCount',
+          'status', 'updatedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidKebabSlug(data.slug) &&
+        isBoundedString(data.name, 2, 80) &&
+        isBoundedString(data.description, 0, 400) &&
+        isBoundedString(data.categorySlug, 0, 100) &&
+        data.usageCount is int && data.usageCount >= 0 && data.usageCount <= 1000000 &&
+        data.status is string && (data.status == 'active' || data.status == 'archived') &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsResourceRelationshipDoc(data) {
+      return data.keys().hasAll([
+          'relationshipId', 'sourceResourceSlug', 'targetResourceSlug',
+          'relationType', 'notes', 'isPublic', 'updatedByUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'relationshipId', 'sourceResourceSlug', 'targetResourceSlug',
+          'relationType', 'notes', 'isPublic', 'updatedByUid',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isBoundedString(data.relationshipId, 3, 128) &&
+        isValidKebabSlug(data.sourceResourceSlug) &&
+        isValidKebabSlug(data.targetResourceSlug) &&
+        data.relationType is string && (
+          data.relationType == 'related' ||
+          data.relationType == 'prerequisite' ||
+          data.relationType == 'alternative' ||
+          data.relationType == 'extends'
+        ) &&
+        isBoundedString(data.notes, 0, 400) &&
+        data.isPublic is bool &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserSubmissionDoc(data) {
+      return data.keys().hasAll([
+          'submitterUid', 'submitterName', 'submissionType', 'title',
+          'targetResourceSlug', 'categorySlug', 'summary', 'proposedCodeOrContent',
+          'sourceUrl', 'licenseAttestation', 'status', 'reviewerNotes',
+          'reviewedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'submitterUid', 'submitterName', 'submissionType', 'title',
+          'targetResourceSlug', 'categorySlug', 'summary', 'proposedCodeOrContent',
+          'sourceUrl', 'licenseAttestation', 'status', 'reviewerNotes',
+          'reviewedByUid', 'createdAt', 'updatedAt'
         ]) &&
         isBoundedString(data.submitterUid, 1, 128) &&
         isBoundedString(data.submitterName, 1, 80) &&
@@ -526,26 +656,81 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidCmsAuditLogDoc(data) {
+    function isValidCmsReviewDoc(data) {
       return data.keys().hasAll([
-          'actorUid',
-          'actorName',
-          'actorRole',
-          'action',
-          'targetType',
-          'targetId',
-          'summary',
-          'createdAt'
+          'reviewId', 'targetType', 'targetId', 'resourceSlug', 'reviewerUid',
+          'reviewerName', 'decision', 'notes', 'checklistPassedCount', 'createdAt'
         ]) &&
         data.keys().hasOnly([
-          'actorUid',
-          'actorName',
-          'actorRole',
-          'action',
-          'targetType',
-          'targetId',
-          'summary',
-          'createdAt'
+          'reviewId', 'targetType', 'targetId', 'resourceSlug', 'reviewerUid',
+          'reviewerName', 'decision', 'notes', 'checklistPassedCount', 'createdAt'
+        ]) &&
+        isBoundedString(data.reviewId, 2, 128) &&
+        data.targetType is string && (data.targetType == 'resource' || data.targetType == 'submission') &&
+        isBoundedString(data.targetId, 1, 128) &&
+        isBoundedString(data.resourceSlug, 0, 128) &&
+        isBoundedString(data.reviewerUid, 1, 128) &&
+        isBoundedString(data.reviewerName, 1, 80) &&
+        data.decision is string && (
+          data.decision == 'approved' ||
+          data.decision == 'rejected' ||
+          data.decision == 'changes_requested'
+        ) &&
+        isBoundedString(data.notes, 1, 1500) &&
+        data.checklistPassedCount is int && data.checklistPassedCount >= 0 && data.checklistPassedCount <= 7 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCmsStorageAssetDoc(data) {
+      return data.keys().hasAll([
+          'assetId', 'bucketNamespace', 'ownerUid', 'fileName', 'fileExtension',
+          'contentType', 'sizeBytes', 'url', 'associatedResourceSlug',
+          'visibility', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'assetId', 'bucketNamespace', 'ownerUid', 'fileName', 'fileExtension',
+          'contentType', 'sizeBytes', 'url', 'associatedResourceSlug',
+          'visibility', 'createdAt'
+        ]) &&
+        isBoundedString(data.assetId, 2, 128) &&
+        data.bucketNamespace is string && (
+          data.bucketNamespace == 'resource-thumbnails' ||
+          data.bucketNamespace == 'verified-visual-references' ||
+          data.bucketNamespace == 'user-uploads' ||
+          data.bucketNamespace == 'admin-assets'
+        ) &&
+        isBoundedString(data.ownerUid, 1, 128) &&
+        isBoundedString(data.fileName, 3, 180) &&
+        data.fileExtension is string && (
+          data.fileExtension == '.png' ||
+          data.fileExtension == '.jpg' ||
+          data.fileExtension == '.jpeg' ||
+          data.fileExtension == '.webp' ||
+          data.fileExtension == '.avif' ||
+          data.fileExtension == '.svg'
+        ) &&
+        data.contentType is string && (
+          data.contentType == 'image/png' ||
+          data.contentType == 'image/jpeg' ||
+          data.contentType == 'image/webp' ||
+          data.contentType == 'image/avif' ||
+          data.contentType == 'image/svg+xml'
+        ) &&
+        data.sizeBytes is int && data.sizeBytes >= 1 && data.sizeBytes <= 5242880 &&
+        isBoundedString(data.url, 8, 500) &&
+        isBoundedString(data.associatedResourceSlug, 0, 120) &&
+        data.visibility is string && (data.visibility == 'private' || data.visibility == 'public') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidCmsAuditLogDoc(data) {
+      return data.keys().hasAll([
+          'actorUid', 'actorName', 'actorRole', 'action', 'targetType',
+          'targetId', 'summary', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'actorUid', 'actorName', 'actorRole', 'action', 'targetType',
+          'targetId', 'summary', 'createdAt'
         ]) &&
         isBoundedString(data.actorUid, 1, 128) &&
         isBoundedString(data.actorName, 1, 80) &&
@@ -568,7 +753,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // COLLECTION 1: USER PROFILES (/users/{userId}) - PII ISOLATED
+    // COLLECTION 1 & 2: USER PROFILES (/users/{userId}) & BOOKMARKS
     // ===============================================================
     match /users/{userId} {
       allow get: if isValidId(userId) && isOwner(userId);
@@ -586,20 +771,11 @@ service cloud.firestore {
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName',
-          'photoURL',
-          'roleTitle',
-          'bio',
-          'preferredTheme',
-          'reducedMotion',
-          'recentlyViewedSlugs',
-          'updatedAt'
+          'displayName', 'photoURL', 'roleTitle', 'bio',
+          'preferredTheme', 'reducedMotion', 'recentlyViewedSlugs', 'updatedAt'
         ]);
       allow delete: if isValidId(userId) && isOwner(userId);
 
-      // ===============================================================
-      // SUBCOLLECTION: USER BOOKMARKS (/users/{userId}/bookmarks/{bookmarkId})
-      // ===============================================================
       match /bookmarks/{bookmarkId} {
         allow get, list: if isValidId(userId) && isOwner(userId);
         allow create: if isValidId(userId) &&
@@ -622,7 +798,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // COLLECTION 2: PERSONAL COLLECTIONS (/collections/{collectionId})
+    // COLLECTION 3 & 4: COLLECTIONS & NORMALIZED COLLECTION ITEMS
     // ===============================================================
     match /collections/{collectionId} {
       allow get, list: if existing().visibility == 'public' ||
@@ -641,20 +817,44 @@ service cloud.firestore {
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'ownerName',
-          'name',
-          'description',
-          'visibility',
-          'resourceSlugs',
-          'updatedAt'
+          'ownerName', 'name', 'description', 'visibility', 'resourceSlugs', 'updatedAt'
         ]);
       allow delete: if isValidId(collectionId) &&
         isVerifiedUser() &&
         existing().ownerId == request.auth.uid;
+
+      match /items/{itemId} {
+        allow get, list: if existing().visibility == 'public' ||
+          (isSignedIn() && existing().ownerId == request.auth.uid);
+        allow create: if isValidId(collectionId) &&
+          isValidId(itemId) &&
+          isVerifiedUser() &&
+          get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid &&
+          isValidCollectionItemDoc(incoming()) &&
+          incoming().collectionId == collectionId &&
+          incoming().itemId == itemId &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time;
+        allow update: if isValidId(collectionId) &&
+          isValidId(itemId) &&
+          isVerifiedUser() &&
+          existing().ownerId == request.auth.uid &&
+          get(/databases/$(database)/documents/collections/$(collectionId)).data.ownerId == request.auth.uid &&
+          isValidCollectionItemDoc(incoming()) &&
+          incoming().collectionId == existing().collectionId &&
+          incoming().itemId == existing().itemId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['orderIndex', 'notes', 'visibility']);
+        allow delete: if isValidId(collectionId) &&
+          isValidId(itemId) &&
+          isVerifiedUser() &&
+          existing().ownerId == request.auth.uid;
+      }
     }
 
     // ===============================================================
-    // COLLECTION 3: PLAYGROUND EXPERIMENTS (/experiments/{experimentId})
+    // COLLECTION 5: PLAYGROUND EXPERIMENTS (/experiments/{experimentId})
     // ===============================================================
     match /experiments/{experimentId} {
       allow get, list: if existing().visibility == 'public' ||
@@ -673,17 +873,9 @@ service cloud.firestore {
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'ownerName',
-          'title',
-          'description',
-          'templateCategory',
-          'associatedResourceSlug',
-          'activeFile',
-          'codeHtml',
-          'codeCss',
-          'codeJs',
-          'visibility',
-          'updatedAt'
+          'ownerName', 'title', 'description', 'templateCategory',
+          'associatedResourceSlug', 'activeFile', 'codeHtml', 'codeCss',
+          'codeJs', 'visibility', 'updatedAt'
         ]);
       allow delete: if isValidId(experimentId) &&
         isVerifiedUser() &&
@@ -691,7 +883,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // COLLECTION 4: ADMIN ROLE ASSIGNMENTS (/admin_roles/{userId})
+    // COLLECTION 6: ADMIN ROLE ASSIGNMENTS (/admin_roles/{userId})
     // ===============================================================
     match /admin_roles/{userId} {
       allow get: if isValidId(userId) && (isOwner(userId) || isEditorOrAbove());
@@ -712,17 +904,14 @@ service cloud.firestore {
         incoming().assignedByUid == request.auth.uid &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName',
-          'role',
-          'assignedByUid',
-          'updatedAt'
+          'displayName', 'role', 'assignedByUid', 'updatedAt'
         ]) &&
         isSuperAdmin();
       allow delete: if isValidId(userId) && isSuperAdmin();
     }
 
     // ===============================================================
-    // COLLECTION 5: CMS RESOURCES (/cms_resources/{resourceSlug})
+    // COLLECTION 7: CMS RESOURCES (/cms_resources/{resourceSlug})
     // ===============================================================
     match /cms_resources/{resourceSlug} {
       allow get: if isValidId(resourceSlug) &&
@@ -785,7 +974,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // COLLECTION 6: CMS CATEGORIES (/cms_categories/{categorySlug})
+    // COLLECTION 8: CMS CATEGORIES (/cms_categories/{categorySlug})
     // ===============================================================
     match /cms_categories/{categorySlug} {
       allow get: if isValidId(categorySlug) &&
@@ -807,25 +996,210 @@ service cloud.firestore {
         incoming().updatedByUid == request.auth.uid &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'code',
-          'name',
-          'shortDescription',
-          'architecturalScope',
-          'iconName',
-          'orderIndex',
-          'isFeatured',
-          'status',
-          'subcategories',
-          'mergedIntoSlug',
-          'updatedByUid',
-          'updatedAt'
+          'code', 'name', 'shortDescription', 'architecturalScope',
+          'iconName', 'orderIndex', 'isFeatured', 'status',
+          'subcategories', 'mergedIntoSlug', 'updatedByUid', 'updatedAt'
         ]) &&
         isAdminOrAbove();
       allow delete: if isValidId(categorySlug) && isAdminOrAbove();
     }
 
     // ===============================================================
-    // COLLECTION 7: USER SUBMISSIONS (/cms_submissions/{submissionId})
+    // COLLECTION 9: SUBCATEGORIES (/cms_subcategories/{subcategoryId})
+    // ===============================================================
+    match /cms_subcategories/{subcategoryId} {
+      allow get: if isValidId(subcategoryId) &&
+        (existing().status == 'active' || existing().status == 'archived' || isEditorOrAbove());
+      allow list: if existing().status == 'active' ||
+        existing().status == 'archived' ||
+        isBootstrappedSuperAdmin();
+      allow create: if isValidId(subcategoryId) &&
+        isValidCmsSubcategoryDoc(incoming()) &&
+        incoming().subcategoryId == subcategoryId &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdminOrAbove();
+      allow update: if isValidId(subcategoryId) &&
+        isValidCmsSubcategoryDoc(incoming()) &&
+        incoming().subcategoryId == existing().subcategoryId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isAdminOrAbove();
+      allow delete: if isValidId(subcategoryId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 10: RESOURCE REVISIONS (/cms_resource_revisions/{revisionId})
+    // ===============================================================
+    match /cms_resource_revisions/{revisionId} {
+      allow get: if isValidId(revisionId) &&
+        (existing().status == 'published' || isEditorOrAbove());
+      allow list: if existing().status == 'published' ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().authorUid == request.auth.uid);
+      allow create: if isValidId(revisionId) &&
+        isValidCmsResourceRevisionDoc(incoming()) &&
+        incoming().revisionId == revisionId &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        isEditorOrAbove();
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // COLLECTION 11: RESOURCE EXAMPLES (/cms_resource_examples/{exampleId})
+    // ===============================================================
+    match /cms_resource_examples/{exampleId} {
+      allow get: if isValidId(exampleId) && (existing().isPublic == true || isEditorOrAbove());
+      allow list: if existing().isPublic == true ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().authorUid == request.auth.uid);
+      allow create: if isValidId(exampleId) &&
+        isValidCmsResourceExampleDoc(incoming()) &&
+        incoming().exampleId == exampleId &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(exampleId) &&
+        isValidCmsResourceExampleDoc(incoming()) &&
+        incoming().exampleId == existing().exampleId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(exampleId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 12: IMPLEMENTATION VARIANTS (/cms_implementation_variants/{variantId})
+    // ===============================================================
+    match /cms_implementation_variants/{variantId} {
+      allow get: if isValidId(variantId) && (existing().isPublic == true || isEditorOrAbove());
+      allow list: if existing().isPublic == true ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().authorUid == request.auth.uid);
+      allow create: if isValidId(variantId) &&
+        isValidCmsImplementationVariantDoc(incoming()) &&
+        incoming().variantId == variantId &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(variantId) &&
+        isValidCmsImplementationVariantDoc(incoming()) &&
+        incoming().variantId == existing().variantId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(variantId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 13: PREVIEW CONFIGURATIONS (/cms_preview_configs/{configId})
+    // ===============================================================
+    match /cms_preview_configs/{configId} {
+      allow get: if isValidId(configId) && (existing().isPublic == true || isEditorOrAbove());
+      allow list: if existing().isPublic == true ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().updatedByUid == request.auth.uid);
+      allow create: if isValidId(configId) &&
+        isValidCmsPreviewConfigDoc(incoming()) &&
+        incoming().configId == configId &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(configId) &&
+        isValidCmsPreviewConfigDoc(incoming()) &&
+        incoming().configId == existing().configId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(configId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 14: TECHNOLOGIES (/cms_technologies/{techSlug})
+    // ===============================================================
+    match /cms_technologies/{techSlug} {
+      allow get: if isValidId(techSlug) &&
+        (existing().status == 'active' || existing().status == 'deprecated' || isEditorOrAbove());
+      allow list: if existing().status == 'active' ||
+        existing().status == 'deprecated' ||
+        isBootstrappedSuperAdmin();
+      allow create: if isValidId(techSlug) &&
+        isValidCmsTechnologyDoc(incoming()) &&
+        incoming().slug == techSlug &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(techSlug) &&
+        isValidCmsTechnologyDoc(incoming()) &&
+        incoming().slug == existing().slug &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(techSlug) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 15: TAGS (/cms_tags/{tagSlug})
+    // ===============================================================
+    match /cms_tags/{tagSlug} {
+      allow get: if isValidId(tagSlug) &&
+        (existing().status == 'active' || existing().status == 'archived' || isEditorOrAbove());
+      allow list: if existing().status == 'active' ||
+        existing().status == 'archived' ||
+        isBootstrappedSuperAdmin();
+      allow create: if isValidId(tagSlug) &&
+        isValidCmsTagDoc(incoming()) &&
+        incoming().slug == tagSlug &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(tagSlug) &&
+        isValidCmsTagDoc(incoming()) &&
+        incoming().slug == existing().slug &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(tagSlug) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 16: RESOURCE RELATIONSHIPS (/cms_resource_relationships/{relationshipId})
+    // ===============================================================
+    match /cms_resource_relationships/{relationshipId} {
+      allow get: if isValidId(relationshipId) && (existing().isPublic == true || isEditorOrAbove());
+      allow list: if existing().isPublic == true ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().updatedByUid == request.auth.uid);
+      allow create: if isValidId(relationshipId) &&
+        isValidCmsResourceRelationshipDoc(incoming()) &&
+        incoming().relationshipId == relationshipId &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow update: if isValidId(relationshipId) &&
+        isValidCmsResourceRelationshipDoc(incoming()) &&
+        incoming().relationshipId == existing().relationshipId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove();
+      allow delete: if isValidId(relationshipId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 17: USER SUBMISSIONS (/cms_submissions/{submissionId})
     // ===============================================================
     match /cms_submissions/{submissionId} {
       allow get: if isValidId(submissionId) &&
@@ -848,17 +1222,64 @@ service cloud.firestore {
         incoming().reviewedByUid == request.auth.uid &&
         incoming().updatedAt == request.time &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'status',
-          'reviewerNotes',
-          'reviewedByUid',
-          'updatedAt'
+          'status', 'reviewerNotes', 'reviewedByUid', 'updatedAt'
         ]) &&
         isReviewerOrAbove();
       allow delete: if isValidId(submissionId) && isAdminOrAbove();
     }
 
     // ===============================================================
-    // COLLECTION 8: IMMUTABLE CMS AUDIT LOGS (/cms_audit_logs/{logId})
+    // COLLECTION 18: EDITORIAL REVIEWS (/cms_reviews/{reviewId})
+    // ===============================================================
+    match /cms_reviews/{reviewId} {
+      allow get: if isValidId(reviewId) && isEditorOrAbove();
+      allow list: if isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().reviewerUid == request.auth.uid);
+      allow create: if isValidId(reviewId) &&
+        isValidCmsReviewDoc(incoming()) &&
+        incoming().reviewId == reviewId &&
+        incoming().reviewerUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        isReviewerOrAbove();
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // COLLECTION 19: SECURE MEDIA & STORAGE ASSETS (/cms_storage_assets/{assetId})
+    // ===============================================================
+    match /cms_storage_assets/{assetId} {
+      allow get: if isValidId(assetId) &&
+        (existing().visibility == 'public' ||
+          (isVerifiedUser() && existing().ownerUid == request.auth.uid) ||
+          isEditorOrAbove());
+      allow list: if existing().visibility == 'public' ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().ownerUid == request.auth.uid);
+      allow create: if isValidId(assetId) &&
+        isVerifiedUser() &&
+        isValidCmsStorageAssetDoc(incoming()) &&
+        incoming().assetId == assetId &&
+        incoming().ownerUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        (
+          (incoming().bucketNamespace == 'user-uploads' && incoming().visibility == 'private' && incoming().sizeBytes <= 2097152) ||
+          (isEditorOrAbove() && incoming().bucketNamespace != 'admin-assets') ||
+          isAdminOrAbove()
+        );
+      allow update: if isValidId(assetId) &&
+        isValidCmsStorageAssetDoc(incoming()) &&
+        incoming().assetId == existing().assetId &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['visibility', 'associatedResourceSlug']) &&
+        isAdminOrAbove();
+      allow delete: if isValidId(assetId) &&
+        ((isVerifiedUser() && existing().ownerUid == request.auth.uid && existing().bucketNamespace == 'user-uploads') ||
+          isAdminOrAbove());
+    }
+
+    // ===============================================================
+    // COLLECTION 20: IMMUTABLE CMS AUDIT LOGS (/cms_audit_logs/{logId})
     // ===============================================================
     match /cms_audit_logs/{logId} {
       allow get: if isValidId(logId) && isEditorOrAbove();
