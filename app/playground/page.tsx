@@ -30,10 +30,37 @@ import {
   ResourceMetadata,
   TechnicalLabel,
 } from '@/components/ui/ContentPrimitives';
+import { useAuthLibrary } from '@/components/providers/AuthLibraryProvider';
 
 function resolveClientPlaygroundConfig(): PlaygroundTemplateConfig | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
+  const expId = params.get('experiment');
+  if (expId) {
+    try {
+      const stagedRaw = window.localStorage.getItem('dde_active_cloud_experiment_v1');
+      if (stagedRaw) {
+        const staged = JSON.parse(stagedRaw);
+        if (staged && staged.files) {
+          const baseTemplate =
+            CANONICAL_PLAYGROUND_TEMPLATES.find(
+              (t) => t.category === staged.templateCategory
+            ) || CANONICAL_PLAYGROUND_TEMPLATES[0];
+          return {
+            ...baseTemplate,
+            id: staged.id || expId,
+            title: staged.title || baseTemplate.title,
+            category: staged.templateCategory || baseTemplate.category,
+            associatedResourceSlug: staged.associatedResourceSlug || '',
+            activeFile: staged.activeFile || '/index.html',
+            files: staged.files,
+          };
+        }
+      }
+    } catch {
+      // Ignore staging parse error
+    }
+  }
   const shareToken = params.get('share');
   if (shareToken) {
     const decoded = decodeShareablePlaygroundState(shareToken);
@@ -84,6 +111,7 @@ function resolveClientPlaygroundConfig(): PlaygroundTemplateConfig | null {
 }
 
 export default function PlaygroundPage() {
+  const { saveExperiment } = useAuthLibrary();
   const [activeTemplate, setActiveTemplate] =
     useState<PlaygroundTemplateConfig>(CANONICAL_PLAYGROUND_TEMPLATES[0]);
   const [savedExperiments, setSavedExperiments] = useState<
@@ -106,9 +134,44 @@ export default function PlaygroundPage() {
     return () => window.cancelAnimationFrame(raf);
   }, []);
 
-  const refreshSavedExperiments = useCallback(() => {
-    setSavedExperiments(loadSavedPlaygroundExperiments());
-  }, []);
+  const refreshSavedExperiments = useCallback(
+    (latestExperiment?: SavedPlaygroundExperiment) => {
+      const list = loadSavedPlaygroundExperiments();
+      setSavedExperiments(list);
+      const target = latestExperiment || list[0];
+      if (target) {
+        const htmlEntry =
+          target.files['/index.html'] ||
+          target.files['/graphic.svg'] ||
+          Object.values(target.files).find((f) => f.language === 'html' || f.language === 'svg');
+        const cssEntry =
+          target.files['/styles.css'] ||
+          Object.values(target.files).find((f) => f.language === 'css');
+        const jsEntry =
+          target.files['/index.js'] ||
+          target.files['/App.tsx'] ||
+          target.files['/canvas.js'] ||
+          target.files['/scene.js'] ||
+          Object.values(target.files).find(
+            (f) => f.language === 'javascript' || f.language === 'tsx'
+          );
+
+        void saveExperiment({
+          id: target.id,
+          title: target.name,
+          description: `Playground fork of ${target.templateId}`,
+          templateCategory: target.category,
+          associatedResourceSlug: target.associatedResourceSlug,
+          activeFile: Object.keys(target.files)[0] || '/index.html',
+          codeHtml: htmlEntry?.code || '',
+          codeCss: cssEntry?.code || '',
+          codeJs: jsEntry?.code || '',
+          visibility: 'private',
+        });
+      }
+    },
+    [saveExperiment]
+  );
 
   const handleLoadResourceIntoPlayground = useCallback((slug: string) => {
     setSelectedResourceSlug(slug);

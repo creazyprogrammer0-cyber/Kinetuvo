@@ -17,9 +17,13 @@ import {
   Code2,
   Clock,
   Accessibility,
+  LogIn,
+  LogOut,
+  LayoutDashboard,
 } from 'lucide-react';
 import { BRAND_CONFIG } from '@/config/brand.config';
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { useAuthLibrary } from '@/components/providers/AuthLibraryProvider';
 import {
   Breadcrumbs,
   BreadcrumbItem,
@@ -64,6 +68,16 @@ export function AppHeader({
   const router = useRouter();
   const { isDarkTheme, toggleTheme, reducedMotionSim, toggleReducedMotionSim } =
     useTheme();
+  const {
+    user,
+    userProfile,
+    bookmarkedSlugs,
+    collections,
+    experiments,
+    signInWithGoogle,
+    signOutUser,
+    authLoading,
+  } = useAuthLibrary();
 
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -522,9 +536,13 @@ export function AppHeader({
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-[var(--ds-secondary)] text-[var(--ds-secondary-foreground)] hover:bg-[var(--ds-secondary-hover)] border border-indigo-200/60 dark:border-indigo-800/60 rounded-[8px] transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-focus)]"
             >
               <User className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Account</span>
+              <span className="hidden md:inline">
+                {user
+                  ? (userProfile?.displayName || user.displayName || 'Library').split(' ')[0]
+                  : 'Account'}
+              </span>
               <span className="font-mono text-[10px] px-1 rounded bg-[var(--ds-surface)] text-[var(--ds-foreground)] tabular-nums">
-                {currentCollection.resourceSlugs.length}
+                {bookmarkedSlugs.length}
               </span>
             </button>
 
@@ -786,6 +804,8 @@ export function AppHeader({
               { label: 'Global Search & Discovery Engine', href: '/search' },
               { label: 'Resource Directory & Multi-Facet Explorer', href: '/directory' },
               { label: 'Interactive Code Playground', href: '/playground' },
+              { label: 'Personal Design Library & Dashboard', href: '/dashboard' },
+              { label: 'Administration Dashboard & CMS', href: '/admin' },
               { label: 'Design System & Component Library', href: '/design-system' },
               { label: 'Official Design Systems Track', href: '/taxonomy/official-design-systems' },
               { label: 'Motion & Animation Track', href: '/taxonomy/motion-animation' },
@@ -838,44 +858,89 @@ export function AppHeader({
       <Drawer
         isOpen={accountDrawerOpen}
         onClose={() => setAccountDrawerOpen(false)}
-        title="User Workspace & Personal Collections"
-        subtitle="Local Session Persistence · Ready for Phase 3 Firebase Cloud Sync"
+        title="User Workspace & Personal Design Library"
+        subtitle={
+          user
+            ? `Authenticated as ${user.email}`
+            : 'Public Guest Session · Sign in for Firebase Cloud Sync'
+        }
         side="right"
       >
         <div className="space-y-6">
-          <div className="p-4 rounded-[10px] bg-[var(--ds-background)] border border-[var(--ds-border)] space-y-2">
+          <div className="p-4 rounded-[10px] bg-[var(--ds-background)] border border-[var(--ds-border)] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold text-[var(--ds-accent)]">
-                ACTIVE WORKSPACE PROFILE
+                {user ? 'CLOUD-SYNCED PROFILE' : 'GUEST WORKSPACE PROFILE'}
               </span>
               <span className="text-[11px] font-mono text-[var(--ds-success)]">
-                Local Sync Active
+                {user ? 'Firebase Auth Active' : 'Local Sync Active'}
               </span>
             </div>
             <div className="font-display text-sm font-bold text-[var(--ds-foreground)]">
-              Product Engineer & Design Explorer
+              {user
+                ? userProfile?.displayName || user.displayName || user.email
+                : 'Product Engineer & Design Explorer'}
             </div>
             <p className="text-xs text-[var(--ds-muted-foreground)]">
-              Saved bookmarks, theme preference, and custom parameter presets are
-              persisted in your browser storage.
+              {user
+                ? `${bookmarkedSlugs.length} saved bookmarks · ${collections.length} collections · ${experiments.length} experiments stored in Firestore.`
+                : 'All public encyclopedia content is accessible without login. Sign in to sync your bookmarks, collections, and playground experiments with Firestore.'}
             </p>
+            <div className="pt-1 flex items-center gap-2">
+              {user ? (
+                <button
+                  type="button"
+                  disabled={authLoading}
+                  onClick={() => void signOutUser()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border border-[var(--ds-border)] bg-[var(--ds-surface)] hover:border-[var(--ds-accent)]"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={authLoading}
+                  onClick={() => void signInWithGoogle()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)]"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  {authLoading ? 'Connecting...' : 'Sign In with Google'}
+                </button>
+              )}
+              <Link
+                href="/dashboard"
+                onClick={() => setAccountDrawerOpen(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border border-[var(--ds-border-strong)] bg-[var(--ds-surface)] text-[var(--ds-foreground)] hover:border-[var(--ds-accent)]"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-[var(--ds-accent)]" />
+                Full Library Dashboard
+              </Link>
+            </div>
           </div>
 
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="font-bold text-[var(--ds-foreground)] flex items-center gap-1.5">
                 <BookmarkCheck className="w-3.5 h-3.5 text-[var(--ds-accent)]" />
-                SAVED CONCEPTS ({currentCollection.resourceSlugs.length})
+                SAVED CONCEPTS ({bookmarkedSlugs.length})
               </span>
+              <Link
+                href="/dashboard"
+                onClick={() => setAccountDrawerOpen(false)}
+                className="text-[11px] text-[var(--ds-accent)] hover:underline"
+              >
+                Manage All →
+              </Link>
             </div>
-            {currentCollection.resourceSlugs.length === 0 ? (
+            {bookmarkedSlugs.length === 0 ? (
               <p className="text-xs text-[var(--ds-muted-foreground)]">
                 No concepts bookmarked yet. Explore any category or concept to save
                 references.
               </p>
             ) : (
               <div className="space-y-1.5">
-                {currentCollection.resourceSlugs.map((slug) => {
+                {bookmarkedSlugs.slice(0, 8).map((slug) => {
                   const res = resources.find((r) => r.slug === slug);
                   return (
                     <Link
@@ -926,18 +991,25 @@ export function AppHeader({
 
           <div className="pt-4 border-t border-[var(--ds-border)] flex flex-col gap-2">
             <Link
-              href="/playground"
+              href="/dashboard"
               onClick={() => setAccountDrawerOpen(false)}
               className="w-full py-2.5 px-4 text-center text-xs font-semibold rounded-[8px] bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] hover:bg-[var(--ds-primary-hover)]"
+            >
+              Open Personal Library & User Dashboard
+            </Link>
+            <Link
+              href="/playground"
+              onClick={() => setAccountDrawerOpen(false)}
+              className="w-full py-2 px-4 text-center text-xs font-semibold rounded-[8px] bg-[var(--ds-surface)] border border-[var(--ds-border-strong)] text-[var(--ds-foreground)] hover:bg-[var(--ds-muted)]"
             >
               Open Playground Studio
             </Link>
             <Link
-              href="/info/submit-resource"
+              href="/admin"
               onClick={() => setAccountDrawerOpen(false)}
-              className="w-full py-2 px-4 text-center text-xs font-semibold rounded-[8px] bg-[var(--ds-surface)] border border-[var(--ds-border-strong)] text-[var(--ds-foreground)] hover:bg-[var(--ds-muted)]"
+              className="w-full py-2 px-4 text-center text-xs font-mono font-semibold rounded-[8px] bg-[var(--ds-surface)] border border-[var(--ds-border)] text-[var(--ds-accent)] hover:bg-[var(--ds-muted)]"
             >
-              Submit a Design Resource
+              Admin Dashboard & CMS (/admin)
             </Link>
           </div>
         </div>

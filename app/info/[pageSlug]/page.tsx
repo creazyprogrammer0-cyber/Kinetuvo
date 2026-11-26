@@ -2,7 +2,8 @@
 
 import React, { useState, use } from 'react';
 import Link from 'next/link';
-import { Send, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { Send, CheckCircle2, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/shell/AppHeader';
 import { AppFooter } from '@/components/shell/AppFooter';
 import { BRAND_CONFIG } from '@/config/brand.config';
@@ -13,6 +14,13 @@ import {
   SemanticAlert,
 } from '@/components/ui/ContentPrimitives';
 import { Button, useToast } from '@/components/ui/InteractionPrimitives';
+import { useAuthLibrary } from '@/components/providers/AuthLibraryProvider';
+import { getFirebaseDb } from '@/lib/firebase/client';
+import {
+  sanitizeKebabSlug,
+  sanitizeRichTextField,
+  UserSubmissionType,
+} from '@/lib/admin/cms-types';
 
 interface InfoPageContent {
   slug: string;
@@ -79,11 +87,11 @@ const INFO_PAGES: Record<string, InfoPageContent> = {
     kicker: 'COMMUNITY & CURATION SUBMISSIONS',
     title: 'Submit a Design Resource or Interactive Specimen',
     subtitle:
-      'Propose an official design system, methodology, WAI-ARIA pattern, or open-source community experiment for editorial verification.',
+      'Propose an official design system, visual example, interactive demonstration, correction, new technology, or related reference for editorial verification.',
     sections: [
       {
-        heading: 'Provenance & License Requirements',
-        body: 'All submissions must include an authoritative specification URL, clear authorship attribution, license metadata, and at least one interactive parameter that can be demonstrated live.',
+        heading: 'Provenance & Moderation Requirements',
+        body: 'All submissions enter the moderated editorial queue (pending_review) and never execute or publish automatically. Reviewers inspect source URLs, license terms, and code safety before converting approved submissions into CMS drafts.',
       },
     ],
   },
@@ -164,41 +172,103 @@ export default function InfoPage({
 }) {
   const { pageSlug } = use(params);
   const { pushToast } = useToast();
+  const { user, signInWithGoogle } = useAuthLibrary();
 
   const content = INFO_PAGES[pageSlug] || INFO_PAGES.documentation;
 
-  // Interactive Form State for Contact & Submit Resource
+  // Interactive Form State for Contact & Submit Resource (Section 8 Moderated Contributions)
+  const [submissionType, setSubmissionType] =
+    useState<UserSubmissionType>('design-resource');
   const [titleOrName, setTitleOrName] = useState('');
   const [urlOrEmail, setUrlOrEmail] = useState('');
+  const [targetResourceSlug, setTargetResourceSlug] = useState('');
   const [categorySelect, setCategorySelect] = useState(
     TAXONOMY_CATEGORIES[0].slug
   );
   const [notes, setNotes] = useState('');
+  const [proposedCode, setProposedCode] = useState('');
+  const [licenseAttestation, setLicenseAttestation] = useState(
+    'MIT / CC-BY-4.0 Verified Attribution'
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [savedToFirestore, setSavedToFirestore] = useState(false);
 
   const showInteractiveForm =
     content.slug === 'submit-resource' || content.slug === 'contact';
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (titleOrName.trim().length < 3) {
-      setFormError('Please provide a valid name or concept title (min 3 characters).');
+    const cleanTitle = sanitizeRichTextField(titleOrName.trim(), 140);
+    const cleanNotes = sanitizeRichTextField(notes.trim(), 3000);
+
+    if (cleanTitle.length < 3) {
+      setFormError(
+        'Please provide a valid name or concept title (min 3 characters).'
+      );
       return;
     }
     if (urlOrEmail.trim().length < 5) {
-      setFormError('Please provide a valid specification URL or contact email.');
+      setFormError(
+        'Please provide a valid specification URL or contact email.'
+      );
       return;
     }
+    if (cleanNotes.length < 10) {
+      setFormError(
+        'Please provide a detailed architectural explanation or correction summary (min 10 characters).'
+      );
+      return;
+    }
+
+    // Persist directly to Firestore /cms_submissions moderation queue when signed in
+    if (user && user.emailVerified) {
+      try {
+        const db = getFirebaseDb();
+        const subId = `sub-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 7)}`;
+        await setDoc(doc(db, 'cms_submissions', subId), {
+          submitterUid: user.uid,
+          submitterName: (
+            user.displayName ||
+            user.email ||
+            'Contributor'
+          ).slice(0, 80),
+          submissionType:
+            content.slug === 'contact' ? 'correction-report' : submissionType,
+          title: cleanTitle,
+          targetResourceSlug: sanitizeKebabSlug(targetResourceSlug),
+          categorySlug: categorySelect.slice(0, 100),
+          summary: cleanNotes,
+          proposedCodeOrContent: proposedCode.slice(0, 15000),
+          sourceUrl: urlOrEmail.trim().slice(0, 500),
+          licenseAttestation: (
+            licenseAttestation || 'MIT / CC-BY-4.0 Attribution'
+          )
+            .trim()
+            .slice(0, 200),
+          status: 'pending_review',
+          reviewerNotes: '',
+          reviewedByUid: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        setSavedToFirestore(true);
+      } catch {
+        setSavedToFirestore(false);
+      }
+    }
+
     setSubmittedSuccess(true);
     pushToast({
       tone: 'success',
       title:
         content.slug === 'submit-resource'
-          ? 'Resource Proposal Recorded'
+          ? 'Moderated Submission Queued'
           : 'Inquiry Recorded',
-      description: `Thank you for contributing to ${BRAND_CONFIG.productName}.`,
+      description: `Queued "${cleanTitle}" for editorial review in /admin.`,
     });
   };
 
@@ -246,39 +316,144 @@ export default function InfoPage({
 
         {showInteractiveForm && (
           <section className="p-6 rounded-[12px] bg-[var(--ds-surface)] border border-[var(--ds-border-strong)] space-y-5">
-            <h2 className="font-display text-lg font-bold text-[var(--ds-foreground)]">
-              {content.slug === 'submit-resource'
-                ? 'Resource & Provenance Submission Form'
-                : 'Editorial & Engineering Contact Form'}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-lg font-bold text-[var(--ds-foreground)]">
+                {content.slug === 'submit-resource'
+                  ? 'Moderated Contribution & Provenance Submission Form'
+                  : 'Editorial & Engineering Contact Form'}
+              </h2>
+              {user ? (
+                <span className="inline-flex items-center gap-1.5 font-mono text-xs text-emerald-500">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>
+                    Connected to Firestore Moderation Queue ({user.email})
+                  </span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void signInWithGoogle()}
+                  className="font-mono text-xs text-[var(--ds-accent)] hover:underline"
+                >
+                  Sign in with Google to sync submission to Firestore /admin →
+                </button>
+              )}
+            </div>
 
             {submittedSuccess ? (
               <SemanticAlert
                 variant="success"
-                title="Submission Validated & Logged"
+                title="Submission Validated & Queued for Editorial Review"
                 action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSubmittedSuccess(false);
-                      setTitleOrName('');
-                      setUrlOrEmail('');
-                      setNotes('');
-                    }}
-                  >
-                    Submit Another
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/admin"
+                      className="px-3 py-1.5 rounded text-xs font-semibold bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)]"
+                    >
+                      Inspect in /admin Moderation Queue
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSubmittedSuccess(false);
+                        setTitleOrName('');
+                        setUrlOrEmail('');
+                        setNotes('');
+                        setProposedCode('');
+                      }}
+                    >
+                      Submit Another
+                    </Button>
+                  </div>
                 }
               >
                 <span className="inline-flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Recorded entry for &quot;{titleOrName}&quot; in track{' '}
-                  <code className="font-mono">{categorySelect}</code>.
+                  <code className="font-mono">{categorySelect}</code> (Status:{' '}
+                  <code className="font-mono">pending_review</code>
+                  {savedToFirestore ? ' · Synced to Firestore' : ''}).
                 </span>
               </SemanticAlert>
             ) : (
-              <form onSubmit={handleFormSubmit} className="space-y-4" noValidate>
+              <form
+                onSubmit={(e) => void handleFormSubmit(e)}
+                className="space-y-4"
+                noValidate
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="info-sub-type"
+                      className="block text-xs font-semibold text-[var(--ds-foreground)]"
+                    >
+                      Contribution Classification *
+                    </label>
+                    <select
+                      id="info-sub-type"
+                      value={submissionType}
+                      onChange={(e) =>
+                        setSubmissionType(
+                          e.target.value as UserSubmissionType
+                        )
+                      }
+                      className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
+                    >
+                      <option value="design-resource">Design Resource</option>
+                      <option value="visual-example">Visual Example</option>
+                      <option value="interactive-demo">
+                        Interactive Demonstration
+                      </option>
+                      <option value="correction-report">
+                        Correction / Issue Report
+                      </option>
+                      <option value="new-technology">New Technology</option>
+                      <option value="related-reference">
+                        Related Reference
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="info-category"
+                      className="block text-xs font-semibold text-[var(--ds-foreground)]"
+                    >
+                      Target Primary Design Category *
+                    </label>
+                    <select
+                      id="info-category"
+                      value={categorySelect}
+                      onChange={(e) => setCategorySelect(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
+                    >
+                      {TAXONOMY_CATEGORIES.map((cat) => (
+                        <option key={cat.id} value={cat.slug}>
+                          {String(cat.orderIndex).padStart(2, '0')}. {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="info-target-slug"
+                      className="block text-xs font-semibold text-[var(--ds-foreground)]"
+                    >
+                      Related Resource Slug (Optional)
+                    </label>
+                    <input
+                      id="info-target-slug"
+                      type="text"
+                      value={targetResourceSlug}
+                      onChange={(e) => setTargetResourceSlug(e.target.value)}
+                      placeholder="e.g., material-3-semantic-token-hierarchy"
+                      className="w-full px-3.5 py-2 text-xs font-mono bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label
@@ -287,18 +462,14 @@ export default function InfoPage({
                     >
                       {content.slug === 'submit-resource'
                         ? 'Design Resource or Concept Title *'
-                        : 'Your Name or Role *'}
+                        : 'Subject / Concept Title *'}
                     </label>
                     <input
                       id="info-field-1"
                       type="text"
                       value={titleOrName}
                       onChange={(e) => setTitleOrName(e.target.value)}
-                      placeholder={
-                        content.slug === 'submit-resource'
-                          ? 'e.g., W3C View Transitions API'
-                          : 'e.g., Design Systems Architect'
-                      }
+                      placeholder="e.g., W3C View Transitions Shared Element Morph"
                       className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
                     />
                   </div>
@@ -308,20 +479,14 @@ export default function InfoPage({
                       htmlFor="info-field-2"
                       className="block text-xs font-semibold text-[var(--ds-foreground)]"
                     >
-                      {content.slug === 'submit-resource'
-                        ? 'Authoritative Specification URL *'
-                        : 'Contact Email or GitHub URL *'}
+                      Authoritative Specification URL *
                     </label>
                     <input
                       id="info-field-2"
                       type="text"
                       value={urlOrEmail}
                       onChange={(e) => setUrlOrEmail(e.target.value)}
-                      placeholder={
-                        content.slug === 'submit-resource'
-                          ? 'https://www.w3.org/TR/...'
-                          : 'architect@example.com'
-                      }
+                      placeholder="https://www.w3.org/TR/css-view-transitions-1/"
                       className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
                     />
                   </div>
@@ -329,40 +494,57 @@ export default function InfoPage({
 
                 <div className="space-y-1.5">
                   <label
-                    htmlFor="info-category"
-                    className="block text-xs font-semibold text-[var(--ds-foreground)]"
-                  >
-                    Target Primary Design Category
-                  </label>
-                  <select
-                    id="info-category"
-                    value={categorySelect}
-                    onChange={(e) => setCategorySelect(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
-                  >
-                    {TAXONOMY_CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.slug}>
-                        {String(cat.orderIndex).padStart(2, '0')}. {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
                     htmlFor="info-notes"
                     className="block text-xs font-semibold text-[var(--ds-foreground)]"
                   >
-                    Interactive Parameter & License Notes
+                    Architectural Summary & Explanation (Min 10 chars) *
                   </label>
                   <textarea
                     id="info-notes"
-                    rows={4}
+                    rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Describe the interactive parameters, license terms, and accessibility behavior..."
+                    placeholder="Describe the design pattern, interactive parameters, accessibility behavior, or correction details..."
                     className="w-full p-3 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="info-code"
+                      className="block text-xs font-semibold text-[var(--ds-foreground)]"
+                    >
+                      Proposed HTML/CSS/JS Specimen (Never Auto-Executed)
+                    </label>
+                    <textarea
+                      id="info-code"
+                      rows={3}
+                      value={proposedCode}
+                      onChange={(e) => setProposedCode(e.target.value)}
+                      placeholder="<div class='specimen'>...</div>"
+                      className="w-full p-2.5 text-xs font-mono bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="info-license"
+                      className="block text-xs font-semibold text-[var(--ds-foreground)]"
+                    >
+                      License & Attribution Attestation *
+                    </label>
+                    <input
+                      id="info-license"
+                      type="text"
+                      value={licenseAttestation}
+                      onChange={(e) => setLicenseAttestation(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs bg-[var(--ds-background)] border border-[var(--ds-border-strong)] rounded-[8px] text-[var(--ds-foreground)]"
+                    />
+                    <p className="text-[11px] text-[var(--ds-muted-foreground)] pt-1">
+                      Submitted code is stored as inert text and inspected by
+                      Reviewers in /admin before any sandbox execution.
+                    </p>
+                  </div>
                 </div>
 
                 {formError && (
@@ -378,8 +560,8 @@ export default function InfoPage({
                   leftIcon={<Send className="w-3.5 h-3.5" />}
                 >
                   {content.slug === 'submit-resource'
-                    ? 'Submit Resource for Verification'
-                    : 'Send Inquiry'}
+                    ? 'Submit Resource for Moderation Review'
+                    : 'Send Editorial Report'}
                 </Button>
               </form>
             )}

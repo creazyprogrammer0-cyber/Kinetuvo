@@ -43,7 +43,7 @@
   --ds-disabled-surface: #F1F5F9;
   --ds-disabled-foreground: #94A3B8;
 
-  /* Legacy alias mappings for Phase 0 compatibility */
+  /* Legacy & CMS alias mappings */
   --surface-canvas: var(--ds-background);
   --surface-elevated: var(--ds-surface);
   --surface-muted: var(--ds-muted);
@@ -53,6 +53,19 @@
   --border-subtle: var(--ds-border);
   --accent-primary: var(--ds-accent);
   --accent-primary-hover: var(--ds-primary-hover);
+  --ds-bg-canvas: var(--ds-background);
+  --ds-surface-1: var(--ds-surface);
+  --ds-surface-2: var(--ds-muted);
+  --ds-border-subtle: var(--ds-border);
+  --ds-text-primary: var(--ds-foreground);
+  --ds-text-secondary: var(--ds-muted-foreground);
+  --ds-text-muted: var(--ds-subtle-foreground);
+  --ds-accent-primary: var(--ds-accent);
+
+  /* Typography Stack Tokens */
+  --font-display: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* 2. Layout Architecture Tokens */
   --ds-layout-max-width: 1360px;

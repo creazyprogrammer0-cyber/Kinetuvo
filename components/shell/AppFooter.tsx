@@ -132,6 +132,14 @@ export function AppFooter() {
                   Contact
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/admin"
+                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors font-mono text-[var(--ds-accent)]"
+                >
+                  Admin CMS (/admin)
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

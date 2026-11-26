@@ -1,30 +1,9 @@
 import type { Metadata } from 'next';
-import {
-  Bricolage_Grotesque,
-  Plus_Jakarta_Sans,
-  JetBrains_Mono,
-} from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { ToastProvider } from '@/components/ui/InteractionPrimitives';
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ['latin'],
-  weight: ['600', '700'],
-  variable: '--font-display',
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-sans',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '600'],
-  variable: '--font-mono',
-});
+import { AuthLibraryProvider } from '@/components/providers/AuthLibraryProvider';
+import { FirestoreErrorBoundary } from '@/components/providers/FirestoreErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'Digital Design Encyclopedia',
@@ -50,17 +29,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${bricolage.variable} ${jakarta.variable} ${jetbrainsMono.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body
         className="font-sans antialiased bg-[var(--ds-background)] text-[var(--ds-foreground)] selection:bg-[var(--ds-primary)] selection:text-white"
         suppressHydrationWarning
       >
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <FirestoreErrorBoundary>
+              <AuthLibraryProvider>{children}</AuthLibraryProvider>
+            </FirestoreErrorBoundary>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

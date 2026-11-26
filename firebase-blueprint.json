@@ -1,0 +1,890 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile document containing PII (email) and personal workspace preferences. Strictly owner-only read and write. Contains zero admin or privilege fields.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Immutable Firebase Auth UID matching the document ID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address (PII isolated to owner)."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name (1 to 80 characters)."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Optional avatar photo URL (0 to 500 characters)."
+        },
+        "roleTitle": {
+          "type": "string",
+          "description": "Optional professional title or role (0 to 80 characters)."
+        },
+        "bio": {
+          "type": "string",
+          "description": "Optional short biography or design focus note (0 to 400 characters)."
+        },
+        "preferredTheme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "description": "Preferred visual color polarity."
+        },
+        "reducedMotion": {
+          "type": "boolean",
+          "description": "Whether reduced motion mode is preferred across interactive specimens."
+        },
+        "recentlyViewedSlugs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Bounded list of up to 25 recently viewed resource slugs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of account profile creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest profile update."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "photoURL",
+        "roleTitle",
+        "bio",
+        "preferredTheme",
+        "reducedMotion",
+        "recentlyViewedSlugs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserBookmark": {
+      "title": "UserBookmark",
+      "description": "Saved encyclopedia resource bookmark stored under /users/{userId}/bookmarks/{bookmarkId} where bookmarkId equals resourceSlug to prevent duplicates.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Immutable owner UID matching the parent userId."
+        },
+        "resourceSlug": {
+          "type": "string",
+          "description": "Canonical encyclopedia resource slug matching bookmarkId."
+        },
+        "resourceTitle": {
+          "type": "string",
+          "description": "Snapshot title of the saved encyclopedia resource."
+        },
+        "categorySlug": {
+          "type": "string",
+          "description": "Primary taxonomy category slug of the resource."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional user study notes for this saved resource (0 to 400 characters)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the resource was bookmarked."
+        }
+      },
+      "required": [
+        "uid",
+        "resourceSlug",
+        "resourceTitle",
+        "categorySlug",
+        "notes",
+        "createdAt"
+      ]
+    },
+    "PersonalCollection": {
+      "title": "PersonalCollection",
+      "description": "Custom curated collection of encyclopedia resources created by a user, supporting private or public visibility and ordered resource slugs.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Immutable Firebase Auth UID of the collection creator."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Public display name of the collection owner."
+        },
+        "name": {
+          "type": "string",
+          "description": "Collection title (1 to 100 characters)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Collection description (0 to 500 characters)."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["private", "public"],
+          "description": "Access visibility mode for the collection."
+        },
+        "resourceSlugs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered array of encyclopedia resource slugs (0 to 50 items)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the collection was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the collection was last modified."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "name",
+        "description",
+        "visibility",
+        "resourceSlugs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PlaygroundExperiment": {
+      "title": "PlaygroundExperiment",
+      "description": "User-saved interactive playground experiment with strict source code size limits, template metadata, and private/public visibility.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Immutable Firebase Auth UID of the experiment creator."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the experiment author."
+        },
+        "title": {
+          "type": "string",
+          "description": "Experiment title (1 to 120 characters)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Experiment summary or implementation note (0 to 600 characters)."
+        },
+        "templateCategory": {
+          "type": "string",
+          "enum": ["vanilla", "react", "svg", "canvas", "three-webgl"],
+          "description": "Playground execution engine template category."
+        },
+        "associatedResourceSlug": {
+          "type": "string",
+          "description": "Optional canonical encyclopedia resource slug associated with this experiment."
+        },
+        "activeFile": {
+          "type": "string",
+          "description": "Default active source file path in the editor (1 to 80 characters)."
+        },
+        "codeHtml": {
+          "type": "string",
+          "description": "HTML or SVG markup source buffer (0 to 25000 characters)."
+        },
+        "codeCss": {
+          "type": "string",
+          "description": "CSS stylesheet source buffer (0 to 25000 characters)."
+        },
+        "codeJs": {
+          "type": "string",
+          "description": "JavaScript or TypeScript/React source buffer (0 to 25000 characters)."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["private", "public"],
+          "description": "Whether the saved experiment is private to the owner or publicly inspectable."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the experiment was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the experiment was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "title",
+        "description",
+        "templateCategory",
+        "associatedResourceSlug",
+        "activeFile",
+        "codeHtml",
+        "codeCss",
+        "codeJs",
+        "visibility",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRoleAssignment": {
+      "title": "AdminRoleAssignment",
+      "description": "Backend-verified administrative role record stored at /admin_roles/{userId}. Writable strictly by a Super Administrator.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Target Firebase Auth UID matching the document ID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the administrative user."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the administrative user (1 to 80 characters)."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["super_admin", "admin", "editor", "reviewer"],
+          "description": "Assigned administrative role tier."
+        },
+        "assignedByUid": {
+          "type": "string",
+          "description": "UID of the Super Administrator who granted or updated this role."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the role was first assigned."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the role was last modified."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "role",
+        "assignedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsResourceDoc": {
+      "title": "CmsResourceDoc",
+      "description": "Structured encyclopedia resource managed via the Content Management System with 8 field groups, live preview validation state, and revision history.",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Unique kebab-case resource slug matching the document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Canonical resource title (3 to 140 characters)."
+        },
+        "shortDescription": {
+          "type": "string",
+          "description": "Compact summary for directory cards (10 to 300 characters)."
+        },
+        "fullDescription": {
+          "type": "string",
+          "description": "Comprehensive architectural summary (0 to 4000 characters)."
+        },
+        "resourceType": {
+          "type": "string",
+          "description": "Resource classification (e.g., UI Component, Interaction Pattern, Motion & Animation)."
+        },
+        "primaryCategory": {
+          "type": "string",
+          "description": "Primary taxonomy category slug."
+        },
+        "subcategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Nested subcategory path labels (up to 15 items)."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Search and taxonomy tags (up to 25 items)."
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative names and synonyms for search (up to 15 items)."
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["foundation", "intermediate", "advanced", "expert"],
+          "description": "Technical complexity level."
+        },
+        "previewType": {
+          "type": "string",
+          "enum": ["html-css-js", "react", "svg", "canvas", "three-webgl"],
+          "description": "Execution template for the live interactive specimen."
+        },
+        "codeHtml": {
+          "type": "string",
+          "description": "HTML or SVG markup buffer for the runnable preview (0 to 25000 characters)."
+        },
+        "codeCss": {
+          "type": "string",
+          "description": "CSS stylesheet buffer for the runnable preview (0 to 25000 characters)."
+        },
+        "codeJs": {
+          "type": "string",
+          "description": "JavaScript or React TSX buffer for the runnable preview (0 to 25000 characters)."
+        },
+        "responsiveViewports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Supported preview viewports (desktop, tablet, mobile)."
+        },
+        "previewVerified": {
+          "type": "boolean",
+          "description": "Whether the live preview passed the 7-point preview validation gate."
+        },
+        "conceptExplanation": {
+          "type": "string",
+          "description": "Detailed concept explanation (0 to 5000 characters)."
+        },
+        "howItWorks": {
+          "type": "string",
+          "description": "Architectural and mechanical explanation (0 to 4000 characters)."
+        },
+        "useCases": {
+          "type": "string",
+          "description": "Primary purpose and real-world use cases (0 to 3000 characters)."
+        },
+        "advantages": {
+          "type": "string",
+          "description": "Architectural and UX advantages (0 to 3000 characters)."
+        },
+        "limitations": {
+          "type": "string",
+          "description": "Tradeoffs and technical limitations (0 to 3000 characters)."
+        },
+        "bestPractices": {
+          "type": "string",
+          "description": "Production engineering best practices (0 to 3000 characters)."
+        },
+        "commonMistakes": {
+          "type": "string",
+          "description": "Anti-patterns and common implementation mistakes (0 to 3000 characters)."
+        },
+        "referenceImageUrl": {
+          "type": "string",
+          "description": "Visual reference diagram or specimen image URL (0 to 500 characters)."
+        },
+        "referenceCaption": {
+          "type": "string",
+          "description": "Caption explaining the visual reference (0 to 400 characters)."
+        },
+        "referenceAttribution": {
+          "type": "string",
+          "description": "Visual source credit and attribution (0 to 400 characters)."
+        },
+        "framework": {
+          "type": "string",
+          "description": "Primary implementation language and framework (0 to 120 characters)."
+        },
+        "dependenciesList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required packages or runtime dependencies (up to 15 items)."
+        },
+        "installInstructions": {
+          "type": "string",
+          "description": "Installation and setup commands (0 to 2000 characters)."
+        },
+        "desktopBehavior": {
+          "type": "string",
+          "description": "Desktop pointer and large-viewport behavior specification (0 to 1500 characters)."
+        },
+        "tabletBehavior": {
+          "type": "string",
+          "description": "Tablet hybrid touch/pointer behavior specification (0 to 1500 characters)."
+        },
+        "mobileBehavior": {
+          "type": "string",
+          "description": "Mobile touch and compact-viewport behavior specification (0 to 1500 characters)."
+        },
+        "browserSupport": {
+          "type": "string",
+          "description": "Cross-browser compatibility matrix notes (0 to 1000 characters)."
+        },
+        "accessibilityNotes": {
+          "type": "string",
+          "description": "WCAG compliance, ARIA, and keyboard navigation requirements (0 to 2000 characters)."
+        },
+        "reducedMotionFallback": {
+          "type": "string",
+          "description": "prefers-reduced-motion fallback behavior (0 to 1500 characters)."
+        },
+        "performanceNotes": {
+          "type": "string",
+          "description": "Frame budget, compositor thread, and memory notes (0 to 1500 characters)."
+        },
+        "editableControlsSpec": {
+          "type": "string",
+          "description": "Parameter control definitions, default values, and reset behavior (0 to 3000 characters)."
+        },
+        "relatedResources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Slugs of related encyclopedia resources (up to 15 items)."
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Prerequisite concepts or resource slugs (up to 15 items)."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative patterns or competing approaches (up to 15 items)."
+        },
+        "relatedTechnologies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Related web standards, APIs, and libraries (up to 15 items)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "in_review", "approved", "published", "rejected", "archived"],
+          "description": "Editorial lifecycle workflow status."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "UID of the resource author or editor."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Display name of the author or editor."
+        },
+        "reviewerName": {
+          "type": "string",
+          "description": "Display name of the assigned reviewer or approver."
+        },
+        "reviewNotes": {
+          "type": "string",
+          "description": "Editorial review feedback or rejection reason (0 to 1500 characters)."
+        },
+        "license": {
+          "type": "string",
+          "description": "Content and code specimen license attribution (0 to 160 characters)."
+        },
+        "sources": {
+          "type": "string",
+          "description": "Authoritative specification citations and references (0 to 1500 characters)."
+        },
+        "revisionNumber": {
+          "type": "number",
+          "description": "Monotonically increasing revision counter."
+        },
+        "publishedAtIso": {
+          "type": "string",
+          "description": "ISO date string when published (0 to 40 characters)."
+        },
+        "lastVerifiedIso": {
+          "type": "string",
+          "description": "ISO date string when technical accuracy was last verified (0 to 40 characters)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of initial creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of most recent revision."
+        }
+      },
+      "required": [
+        "slug",
+        "title",
+        "shortDescription",
+        "fullDescription",
+        "resourceType",
+        "primaryCategory",
+        "subcategories",
+        "tags",
+        "aliases",
+        "difficulty",
+        "previewType",
+        "codeHtml",
+        "codeCss",
+        "codeJs",
+        "responsiveViewports",
+        "previewVerified",
+        "conceptExplanation",
+        "howItWorks",
+        "useCases",
+        "advantages",
+        "limitations",
+        "bestPractices",
+        "commonMistakes",
+        "referenceImageUrl",
+        "referenceCaption",
+        "referenceAttribution",
+        "framework",
+        "dependenciesList",
+        "installInstructions",
+        "desktopBehavior",
+        "tabletBehavior",
+        "mobileBehavior",
+        "browserSupport",
+        "accessibilityNotes",
+        "reducedMotionFallback",
+        "performanceNotes",
+        "editableControlsSpec",
+        "relatedResources",
+        "prerequisites",
+        "alternatives",
+        "relatedTechnologies",
+        "status",
+        "authorUid",
+        "authorName",
+        "reviewerName",
+        "reviewNotes",
+        "license",
+        "sources",
+        "revisionNumber",
+        "publishedAtIso",
+        "lastVerifiedIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsCategoryDoc": {
+      "title": "CmsCategoryDoc",
+      "description": "Taxonomy category managed via the CMS supporting nested subcategory hierarchies, ordering, featured badge, and merge/archive migration.",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Canonical kebab-case category slug matching the document ID."
+        },
+        "code": {
+          "type": "string",
+          "description": "Two-digit numeric taxonomy code (e.g. 01, 17)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Category display title (2 to 100 characters)."
+        },
+        "shortDescription": {
+          "type": "string",
+          "description": "Concise taxonomy overview (5 to 400 characters)."
+        },
+        "architecturalScope": {
+          "type": "string",
+          "description": "Detailed architectural scope description (0 to 1500 characters)."
+        },
+        "iconName": {
+          "type": "string",
+          "description": "Lucide icon identifier for visual taxonomy identity."
+        },
+        "orderIndex": {
+          "type": "number",
+          "description": "Numeric sort order across primary categories."
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "Whether this category is featured in discovery hubs."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Lifecycle status of the category."
+        },
+        "subcategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Nested subcategory paths (e.g. 'Motion > Physics > Springs', up to 30 items)."
+        },
+        "mergedIntoSlug": {
+          "type": "string",
+          "description": "Target category slug if this category was merged/reassigned."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "UID of the administrator who last updated this category."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created in CMS."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated."
+        }
+      },
+      "required": [
+        "slug",
+        "code",
+        "name",
+        "shortDescription",
+        "architecturalScope",
+        "iconName",
+        "orderIndex",
+        "isFeatured",
+        "status",
+        "subcategories",
+        "mergedIntoSlug",
+        "updatedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserSubmissionDoc": {
+      "title": "UserSubmissionDoc",
+      "description": "Moderated community submission or resource issue report stored in /cms_submissions/{submissionId}. Never executes or publishes automatically.",
+      "type": "object",
+      "properties": {
+        "submitterUid": {
+          "type": "string",
+          "description": "Immutable Firebase Auth UID of the submitting user."
+        },
+        "submitterName": {
+          "type": "string",
+          "description": "Display name of the submitting user (1 to 80 characters)."
+        },
+        "submissionType": {
+          "type": "string",
+          "enum": [
+            "design-resource",
+            "visual-example",
+            "interactive-demo",
+            "correction-report",
+            "new-technology",
+            "related-reference"
+          ],
+          "description": "Classification of user contribution or issue report."
+        },
+        "title": {
+          "type": "string",
+          "description": "Submission title or issue summary (3 to 140 characters)."
+        },
+        "targetResourceSlug": {
+          "type": "string",
+          "description": "Associated resource slug when reporting a correction or adding an example."
+        },
+        "categorySlug": {
+          "type": "string",
+          "description": "Target taxonomy category slug."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Detailed explanation of the proposed resource or correction (10 to 3000 characters)."
+        },
+        "proposedCodeOrContent": {
+          "type": "string",
+          "description": "Untrusted plain-text code snippet or documentation payload inspected during moderation (0 to 15000 characters)."
+        },
+        "sourceUrl": {
+          "type": "string",
+          "description": "Reference URL or specification link (0 to 500 characters)."
+        },
+        "licenseAttestation": {
+          "type": "string",
+          "description": "License and attribution attestation provided by submitter (1 to 200 characters)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending_review", "approved", "rejected"],
+          "description": "Moderation workflow state."
+        },
+        "reviewerNotes": {
+          "type": "string",
+          "description": "Moderator review notes (0 to 1000 characters)."
+        },
+        "reviewedByUid": {
+          "type": "string",
+          "description": "UID of the reviewer or admin who processed the submission."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of submission."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest moderation update."
+        }
+      },
+      "required": [
+        "submitterUid",
+        "submitterName",
+        "submissionType",
+        "title",
+        "targetResourceSlug",
+        "categorySlug",
+        "summary",
+        "proposedCodeOrContent",
+        "sourceUrl",
+        "licenseAttestation",
+        "status",
+        "reviewerNotes",
+        "reviewedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CmsAuditLogDoc": {
+      "title": "CmsAuditLogDoc",
+      "description": "Immutable append-only audit log entry recording administrative actions, workflow transitions, category migrations, and role changes.",
+      "type": "object",
+      "properties": {
+        "actorUid": {
+          "type": "string",
+          "description": "Immutable UID of the authenticated admin/editor/reviewer performing the action."
+        },
+        "actorName": {
+          "type": "string",
+          "description": "Display name of the actor (1 to 80 characters)."
+        },
+        "actorRole": {
+          "type": "string",
+          "enum": ["super_admin", "admin", "editor", "reviewer"],
+          "description": "Verified role of the actor at the time of action."
+        },
+        "action": {
+          "type": "string",
+          "description": "Action identifier (e.g. resource.publish, resource.approve, category.merge, role.assign)."
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["resource", "category", "submission", "role"],
+          "description": "Entity domain affected by the action."
+        },
+        "targetId": {
+          "type": "string",
+          "description": "Slug or document ID of the affected entity."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Human-readable audit summary of the change (1 to 500 characters)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the audit event was recorded."
+        }
+      },
+      "required": [
+        "actorUid",
+        "actorName",
+        "actorRole",
+        "action",
+        "targetType",
+        "targetId",
+        "summary",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private user profile and workspace preferences document. Isolated strictly to the authenticated owner."
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": {
+        "$ref": "#/entities/UserBookmark"
+      },
+      "description": "Owner-isolated saved encyclopedia resource bookmarks. Document ID is the resourceSlug to enforce deduplication."
+    },
+    "/collections/{collectionId}": {
+      "schema": {
+        "$ref": "#/entities/PersonalCollection"
+      },
+      "description": "User-curated resource collections supporting owner CRUD and public/private visibility."
+    },
+    "/experiments/{experimentId}": {
+      "schema": {
+        "$ref": "#/entities/PlaygroundExperiment"
+      },
+      "description": "User-saved interactive playground code experiments with bounded source payload sizes and public/private visibility."
+    },
+    "/admin_roles/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AdminRoleAssignment"
+      },
+      "description": "Server-enforced administrative role assignments (super_admin, admin, editor, reviewer). Writable exclusively by Super Administrators."
+    },
+    "/cms_resources/{resourceSlug}": {
+      "schema": {
+        "$ref": "#/entities/CmsResourceDoc"
+      },
+      "description": "Structured CMS encyclopedia resources with 8 field groups, preview validation state, revision tracking, and role-gated editorial workflow."
+    },
+    "/cms_categories/{categorySlug}": {
+      "schema": {
+        "$ref": "#/entities/CmsCategoryDoc"
+      },
+      "description": "CMS-managed taxonomy categories supporting nested subcategory hierarchies, ordering, featured flags, and safe category merge/reassignment."
+    },
+    "/cms_submissions/{submissionId}": {
+      "schema": {
+        "$ref": "#/entities/UserSubmissionDoc"
+      },
+      "description": "Moderated user resource submissions and issue reports. Defaults to pending_review and never publishes or executes automatically."
+    },
+    "/cms_audit_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/CmsAuditLogDoc"
+      },
+      "description": "Immutable append-only audit log tracking all CMS editorial transitions, category mutations, submission reviews, and role assignments."
+    }
+  }
+}

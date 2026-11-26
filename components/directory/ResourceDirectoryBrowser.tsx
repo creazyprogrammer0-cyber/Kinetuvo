@@ -52,6 +52,20 @@ import {
   loadPersonalCollection,
   toggleBookmarkInCollection,
 } from '@/lib/collections/storage-adapter';
+import {
+  collection as fsCollection,
+  onSnapshot,
+  query,
+  where,
+} from 'firebase/firestore';
+import { getFirebaseDb } from '@/lib/firebase/client';
+import {
+  CmsDifficultyLevel,
+  CmsPreviewType,
+  CmsResourceRecord,
+  CmsResourceStatus,
+  convertCmsRecordToDesignResource,
+} from '@/lib/admin/cms-types';
 
 export type DirectorySortMode =
   | 'most-relevant'
@@ -96,6 +110,9 @@ export function ResourceDirectoryBrowser({
   const { pushToast } = useToast();
   const [collection, setCollection] = useState(DEFAULT_COLLECTION);
   const [hydrated, setHydrated] = useState<boolean>(false);
+  const [publishedCmsResources, setPublishedCmsResources] = useState<
+    DesignResource[]
+  >([]);
 
   // Multi-select filter states initialized deterministically for SSR parity
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -199,6 +216,114 @@ export function ResourceDirectoryBrowser({
     return () => window.cancelAnimationFrame(raf);
   }, [lockedCategorySlug]);
 
+  // Subscribe to published CMS resources in Firestore (/cms_resources where status == 'published')
+  useEffect(() => {
+    try {
+      const db = getFirebaseDb();
+      const q = query(
+        fsCollection(db, 'cms_resources'),
+        where('status', '==', 'published')
+      );
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const list: DesignResource[] = [];
+          snap.forEach((docSnap) => {
+            const d = docSnap.data();
+            const cmsRecord: CmsResourceRecord = {
+              slug: String(d.slug || docSnap.id),
+              title: String(d.title || ''),
+              shortDescription: String(d.shortDescription || ''),
+              fullDescription: String(d.fullDescription || ''),
+              resourceType: String(d.resourceType || 'ui-component'),
+              primaryCategory: String(d.primaryCategory || 'ui-components'),
+              subcategories: Array.isArray(d.subcategories)
+                ? d.subcategories.map(String)
+                : [],
+              tags: Array.isArray(d.tags) ? d.tags.map(String) : [],
+              aliases: Array.isArray(d.aliases) ? d.aliases.map(String) : [],
+              difficulty:
+                (d.difficulty as CmsDifficultyLevel) || 'intermediate',
+              previewType: (d.previewType as CmsPreviewType) || 'html-css-js',
+              codeHtml: String(d.codeHtml || ''),
+              codeCss: String(d.codeCss || ''),
+              codeJs: String(d.codeJs || ''),
+              responsiveViewports: Array.isArray(d.responsiveViewports)
+                ? d.responsiveViewports.map(String)
+                : ['desktop', 'tablet', 'mobile'],
+              previewVerified: Boolean(d.previewVerified),
+              conceptExplanation: String(d.conceptExplanation || ''),
+              howItWorks: String(d.howItWorks || ''),
+              useCases: String(d.useCases || ''),
+              advantages: String(d.advantages || ''),
+              limitations: String(d.limitations || ''),
+              bestPractices: String(d.bestPractices || ''),
+              commonMistakes: String(d.commonMistakes || ''),
+              referenceImageUrl: String(d.referenceImageUrl || ''),
+              referenceCaption: String(d.referenceCaption || ''),
+              referenceAttribution: String(d.referenceAttribution || ''),
+              framework: String(d.framework || 'Web Standards'),
+              dependenciesList: Array.isArray(d.dependenciesList)
+                ? d.dependenciesList.map(String)
+                : [],
+              installInstructions: String(d.installInstructions || ''),
+              desktopBehavior: String(d.desktopBehavior || ''),
+              tabletBehavior: String(d.tabletBehavior || ''),
+              mobileBehavior: String(d.mobileBehavior || ''),
+              browserSupport: String(d.browserSupport || ''),
+              accessibilityNotes: String(d.accessibilityNotes || ''),
+              reducedMotionFallback: String(d.reducedMotionFallback || ''),
+              performanceNotes: String(d.performanceNotes || ''),
+              editableControlsSpec: String(d.editableControlsSpec || ''),
+              relatedResources: Array.isArray(d.relatedResources)
+                ? d.relatedResources.map(String)
+                : [],
+              prerequisites: Array.isArray(d.prerequisites)
+                ? d.prerequisites.map(String)
+                : [],
+              alternatives: Array.isArray(d.alternatives)
+                ? d.alternatives.map(String)
+                : [],
+              relatedTechnologies: Array.isArray(d.relatedTechnologies)
+                ? d.relatedTechnologies.map(String)
+                : [],
+              status: (d.status as CmsResourceStatus) || 'published',
+              authorUid: String(d.authorUid || ''),
+              authorName: String(d.authorName || ''),
+              reviewerName: String(d.reviewerName || ''),
+              reviewNotes: String(d.reviewNotes || ''),
+              license: String(d.license || ''),
+              sources: String(d.sources || ''),
+              revisionNumber: Number(d.revisionNumber || 1),
+              publishedAtIso: String(d.publishedAtIso || ''),
+              lastVerifiedIso: String(d.lastVerifiedIso || ''),
+              createdAtIso: new Date().toISOString(),
+              updatedAtIso: new Date().toISOString(),
+            };
+            list.push(convertCmsRecordToDesignResource(cmsRecord));
+          });
+          setPublishedCmsResources(list);
+        },
+        () => {
+          // Non-fatal fallback to baseline seed resources
+        }
+      );
+      return () => unsub();
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  // Merge published CMS resources with baseline FOUNDATION_RESOURCES (CMS overrides seed if same slug)
+  const allDirectoryResources = useMemo<DesignResource[]>(() => {
+    if (publishedCmsResources.length === 0) return FOUNDATION_RESOURCES;
+    const cmsSlugSet = new Set(publishedCmsResources.map((r) => r.slug));
+    const seedRemaining = FOUNDATION_RESOURCES.filter(
+      (r) => !cmsSlugSet.has(r.slug)
+    );
+    return [...publishedCmsResources, ...seedRemaining];
+  }, [publishedCmsResources]);
+
   // Synchronize filter state back to URL query parameters without reload
   useEffect(() => {
     if (!hydrated || typeof window === 'undefined') return;
@@ -270,27 +395,27 @@ export function ResourceDirectoryBrowser({
   // Extract distinct technologies, frameworks, tags, and subcategories
   const allTechnologies = useMemo(() => {
     const set = new Set<string>();
-    FOUNDATION_RESOURCES.forEach((r) =>
+    allDirectoryResources.forEach((r) =>
       (r.technologies || []).forEach((t) => set.add(t))
     );
     return Array.from(set).sort();
-  }, []);
+  }, [allDirectoryResources]);
 
   const allFrameworks = useMemo(() => {
     const set = new Set<string>();
-    FOUNDATION_RESOURCES.forEach((r) =>
+    allDirectoryResources.forEach((r) =>
       (r.frameworks || []).forEach((f) => set.add(f))
     );
     return Array.from(set).sort();
-  }, []);
+  }, [allDirectoryResources]);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
-    FOUNDATION_RESOURCES.forEach((r) =>
+    allDirectoryResources.forEach((r) =>
       (r.tags || []).forEach((t) => set.add(t))
     );
     return Array.from(set).sort();
-  }, []);
+  }, [allDirectoryResources]);
 
   const availableSubcategoryNames = useMemo(() => {
     const targetCats =
@@ -319,7 +444,7 @@ export function ResourceDirectoryBrowser({
   const filteredAndSortedResources = useMemo(() => {
     if (simulateEmptyLibraryState) return [];
 
-    const filtered = FOUNDATION_RESOURCES.filter((res) => {
+    const filtered = allDirectoryResources.filter((res) => {
       if (!includeDraftResources && res.publicationStatus === 'draft-preview') {
         return false;
       }
@@ -489,6 +614,7 @@ export function ResourceDirectoryBrowser({
       return bRel - aRel;
     });
   }, [
+    allDirectoryResources,
     simulateEmptyLibraryState,
     includeDraftResources,
     selectedCategories,

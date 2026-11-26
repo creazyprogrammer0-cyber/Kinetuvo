@@ -1,0 +1,875 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // PILLAR 1: DEFAULT DENY CATCH-ALL
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // PILLAR 2 & 3: GLOBAL HELPER FUNCTIONS & RBAC VERIFICATION
+    // ===============================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidKebabSlug(slug) {
+      return slug is string && slug.size() >= 2 && slug.size() <= 120 && slug.matches('^[a-z0-9\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() >= 3 &&
+        email.size() <= 254 &&
+        email.matches('^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isBoundedString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isBoundedStringList(arr, maxItems) {
+      return arr is list && arr.size() <= maxItems && (arr.size() == 0 || arr[0] is string);
+    }
+
+    // Root Super Admin verified via runtime owner email + email_verified
+    function isBootstrappedSuperAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'creazyprogrammer0@gmail.com';
+    }
+
+    function hasAdminRoleDoc() {
+      return isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid));
+    }
+
+    function assignedRole() {
+      return get(/databases/$(database)/documents/admin_roles/$(request.auth.uid)).data.role;
+    }
+
+    function isSuperAdmin() {
+      return isBootstrappedSuperAdmin() ||
+        (hasAdminRoleDoc() && assignedRole() == 'super_admin');
+    }
+
+    function isAdminOrAbove() {
+      return isBootstrappedSuperAdmin() ||
+        (hasAdminRoleDoc() && (assignedRole() == 'super_admin' || assignedRole() == 'admin'));
+    }
+
+    function isReviewerOrAbove() {
+      return isBootstrappedSuperAdmin() ||
+        (hasAdminRoleDoc() && (
+          assignedRole() == 'super_admin' ||
+          assignedRole() == 'admin' ||
+          assignedRole() == 'reviewer'
+        ));
+    }
+
+    function isEditorOrAbove() {
+      return isBootstrappedSuperAdmin() ||
+        (hasAdminRoleDoc() && (
+          assignedRole() == 'super_admin' ||
+          assignedRole() == 'admin' ||
+          assignedRole() == 'reviewer' ||
+          assignedRole() == 'editor'
+        ));
+    }
+
+    // ===============================================================
+    // PILLAR 4 & 5: STANDALONE ENTITY VALIDATORS
+    // ===============================================================
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'roleTitle',
+          'bio',
+          'preferredTheme',
+          'reducedMotion',
+          'recentlyViewedSlugs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'roleTitle',
+          'bio',
+          'preferredTheme',
+          'reducedMotion',
+          'recentlyViewedSlugs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isBoundedString(data.uid, 1, 128) &&
+        isValidEmail(data.email) &&
+        isBoundedString(data.displayName, 1, 80) &&
+        isBoundedString(data.photoURL, 0, 500) &&
+        isBoundedString(data.roleTitle, 0, 80) &&
+        isBoundedString(data.bio, 0, 400) &&
+        data.preferredTheme is string && (data.preferredTheme == 'light' || data.preferredTheme == 'dark') &&
+        data.reducedMotion is bool &&
+        isBoundedStringList(data.recentlyViewedSlugs, 25) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserBookmark(data) {
+      return data.keys().hasAll([
+          'uid',
+          'resourceSlug',
+          'resourceTitle',
+          'categorySlug',
+          'notes',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'resourceSlug',
+          'resourceTitle',
+          'categorySlug',
+          'notes',
+          'createdAt'
+        ]) &&
+        isBoundedString(data.uid, 1, 128) &&
+        isBoundedString(data.resourceSlug, 1, 128) &&
+        isBoundedString(data.resourceTitle, 1, 160) &&
+        isBoundedString(data.categorySlug, 1, 100) &&
+        isBoundedString(data.notes, 0, 400) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPersonalCollection(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'ownerName',
+          'name',
+          'description',
+          'visibility',
+          'resourceSlugs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'ownerName',
+          'name',
+          'description',
+          'visibility',
+          'resourceSlugs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isBoundedString(data.ownerId, 1, 128) &&
+        isBoundedString(data.ownerName, 1, 80) &&
+        isBoundedString(data.name, 1, 100) &&
+        isBoundedString(data.description, 0, 500) &&
+        data.visibility is string && (data.visibility == 'private' || data.visibility == 'public') &&
+        isBoundedStringList(data.resourceSlugs, 50) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPlaygroundExperiment(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'ownerName',
+          'title',
+          'description',
+          'templateCategory',
+          'associatedResourceSlug',
+          'activeFile',
+          'codeHtml',
+          'codeCss',
+          'codeJs',
+          'visibility',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'ownerName',
+          'title',
+          'description',
+          'templateCategory',
+          'associatedResourceSlug',
+          'activeFile',
+          'codeHtml',
+          'codeCss',
+          'codeJs',
+          'visibility',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isBoundedString(data.ownerId, 1, 128) &&
+        isBoundedString(data.ownerName, 1, 80) &&
+        isBoundedString(data.title, 1, 120) &&
+        isBoundedString(data.description, 0, 600) &&
+        data.templateCategory is string && (
+          data.templateCategory == 'vanilla' ||
+          data.templateCategory == 'react' ||
+          data.templateCategory == 'svg' ||
+          data.templateCategory == 'canvas' ||
+          data.templateCategory == 'three-webgl'
+        ) &&
+        isBoundedString(data.associatedResourceSlug, 0, 128) &&
+        isBoundedString(data.activeFile, 1, 80) &&
+        isBoundedString(data.codeHtml, 0, 25000) &&
+        isBoundedString(data.codeCss, 0, 25000) &&
+        isBoundedString(data.codeJs, 0, 25000) &&
+        data.visibility is string && (data.visibility == 'private' || data.visibility == 'public') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRoleAssignment(data) {
+      return data.keys().hasAll([
+          'uid',
+          'email',
+          'displayName',
+          'role',
+          'assignedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'role',
+          'assignedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isBoundedString(data.uid, 1, 128) &&
+        isValidEmail(data.email) &&
+        isBoundedString(data.displayName, 1, 80) &&
+        data.role is string && (
+          data.role == 'super_admin' ||
+          data.role == 'admin' ||
+          data.role == 'editor' ||
+          data.role == 'reviewer'
+        ) &&
+        isBoundedString(data.assignedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsResourceKeys(data) {
+      return data.keys().hasAll([
+          'slug', 'title', 'shortDescription', 'fullDescription', 'resourceType',
+          'primaryCategory', 'subcategories', 'tags', 'aliases', 'difficulty',
+          'previewType', 'codeHtml', 'codeCss', 'codeJs', 'responsiveViewports',
+          'previewVerified', 'conceptExplanation', 'howItWorks', 'useCases',
+          'advantages', 'limitations', 'bestPractices', 'commonMistakes',
+          'referenceImageUrl', 'referenceCaption', 'referenceAttribution',
+          'framework', 'dependenciesList', 'installInstructions', 'desktopBehavior',
+          'tabletBehavior', 'mobileBehavior', 'browserSupport', 'accessibilityNotes',
+          'reducedMotionFallback', 'performanceNotes', 'editableControlsSpec',
+          'relatedResources', 'prerequisites', 'alternatives', 'relatedTechnologies',
+          'status', 'authorUid', 'authorName', 'reviewerName', 'reviewNotes',
+          'license', 'sources', 'revisionNumber', 'publishedAtIso', 'lastVerifiedIso',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'slug', 'title', 'shortDescription', 'fullDescription', 'resourceType',
+          'primaryCategory', 'subcategories', 'tags', 'aliases', 'difficulty',
+          'previewType', 'codeHtml', 'codeCss', 'codeJs', 'responsiveViewports',
+          'previewVerified', 'conceptExplanation', 'howItWorks', 'useCases',
+          'advantages', 'limitations', 'bestPractices', 'commonMistakes',
+          'referenceImageUrl', 'referenceCaption', 'referenceAttribution',
+          'framework', 'dependenciesList', 'installInstructions', 'desktopBehavior',
+          'tabletBehavior', 'mobileBehavior', 'browserSupport', 'accessibilityNotes',
+          'reducedMotionFallback', 'performanceNotes', 'editableControlsSpec',
+          'relatedResources', 'prerequisites', 'alternatives', 'relatedTechnologies',
+          'status', 'authorUid', 'authorName', 'reviewerName', 'reviewNotes',
+          'license', 'sources', 'revisionNumber', 'publishedAtIso', 'lastVerifiedIso',
+          'createdAt', 'updatedAt'
+        ]);
+    }
+
+    function isValidCmsResourceIdentityAndPreview(data) {
+      return isValidKebabSlug(data.slug) &&
+        isBoundedString(data.title, 3, 140) &&
+        isBoundedString(data.shortDescription, 5, 300) &&
+        isBoundedString(data.fullDescription, 0, 4000) &&
+        isBoundedString(data.resourceType, 2, 80) &&
+        isBoundedString(data.primaryCategory, 2, 100) &&
+        isBoundedStringList(data.subcategories, 15) &&
+        isBoundedStringList(data.tags, 25) &&
+        isBoundedStringList(data.aliases, 15) &&
+        data.difficulty is string && (
+          data.difficulty == 'foundation' ||
+          data.difficulty == 'intermediate' ||
+          data.difficulty == 'advanced' ||
+          data.difficulty == 'expert'
+        ) &&
+        data.previewType is string && (
+          data.previewType == 'html-css-js' ||
+          data.previewType == 'react' ||
+          data.previewType == 'svg' ||
+          data.previewType == 'canvas' ||
+          data.previewType == 'three-webgl'
+        ) &&
+        isBoundedString(data.codeHtml, 0, 25000) &&
+        isBoundedString(data.codeCss, 0, 25000) &&
+        isBoundedString(data.codeJs, 0, 25000) &&
+        isBoundedStringList(data.responsiveViewports, 5) &&
+        data.previewVerified is bool;
+    }
+
+    function isValidCmsResourceDocsAndSpecs(data) {
+      return isBoundedString(data.conceptExplanation, 0, 5000) &&
+        isBoundedString(data.howItWorks, 0, 4000) &&
+        isBoundedString(data.useCases, 0, 3000) &&
+        isBoundedString(data.advantages, 0, 3000) &&
+        isBoundedString(data.limitations, 0, 3000) &&
+        isBoundedString(data.bestPractices, 0, 3000) &&
+        isBoundedString(data.commonMistakes, 0, 3000) &&
+        isBoundedString(data.referenceImageUrl, 0, 500) &&
+        isBoundedString(data.referenceCaption, 0, 400) &&
+        isBoundedString(data.referenceAttribution, 0, 400) &&
+        isBoundedString(data.framework, 0, 120) &&
+        isBoundedStringList(data.dependenciesList, 15) &&
+        isBoundedString(data.installInstructions, 0, 2000) &&
+        isBoundedString(data.desktopBehavior, 0, 1500) &&
+        isBoundedString(data.tabletBehavior, 0, 1500) &&
+        isBoundedString(data.mobileBehavior, 0, 1500) &&
+        isBoundedString(data.browserSupport, 0, 1000) &&
+        isBoundedString(data.accessibilityNotes, 0, 2000) &&
+        isBoundedString(data.reducedMotionFallback, 0, 1500) &&
+        isBoundedString(data.performanceNotes, 0, 1500) &&
+        isBoundedString(data.editableControlsSpec, 0, 3000);
+    }
+
+    function isValidCmsResourceRelationsAndWorkflow(data) {
+      return isBoundedStringList(data.relatedResources, 15) &&
+        isBoundedStringList(data.prerequisites, 15) &&
+        isBoundedStringList(data.alternatives, 15) &&
+        isBoundedStringList(data.relatedTechnologies, 15) &&
+        data.status is string && (
+          data.status == 'draft' ||
+          data.status == 'in_review' ||
+          data.status == 'approved' ||
+          data.status == 'published' ||
+          data.status == 'rejected' ||
+          data.status == 'archived'
+        ) &&
+        isBoundedString(data.authorUid, 1, 128) &&
+        isBoundedString(data.authorName, 1, 80) &&
+        isBoundedString(data.reviewerName, 0, 80) &&
+        isBoundedString(data.reviewNotes, 0, 1500) &&
+        isBoundedString(data.license, 0, 160) &&
+        isBoundedString(data.sources, 0, 1500) &&
+        data.revisionNumber is int && data.revisionNumber >= 1 && data.revisionNumber <= 100000 &&
+        isBoundedString(data.publishedAtIso, 0, 40) &&
+        isBoundedString(data.lastVerifiedIso, 0, 40) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsResourceDoc(data) {
+      return isValidCmsResourceKeys(data) &&
+        isValidCmsResourceIdentityAndPreview(data) &&
+        isValidCmsResourceDocsAndSpecs(data) &&
+        isValidCmsResourceRelationsAndWorkflow(data);
+    }
+
+    // Section 5 Preview Validation Gate enforced at the database layer before publishing
+    function passesPublishValidationGate(data) {
+      return data.previewVerified == true &&
+        data.title.size() >= 3 &&
+        isValidKebabSlug(data.slug) &&
+        data.primaryCategory.size() >= 2 &&
+        data.conceptExplanation.size() >= 20 &&
+        data.license.size() >= 2 &&
+        data.sources.size() >= 3 &&
+        (data.codeHtml.size() >= 10 || data.codeJs.size() >= 10);
+    }
+
+    function isValidCmsCategoryDoc(data) {
+      return data.keys().hasAll([
+          'slug',
+          'code',
+          'name',
+          'shortDescription',
+          'architecturalScope',
+          'iconName',
+          'orderIndex',
+          'isFeatured',
+          'status',
+          'subcategories',
+          'mergedIntoSlug',
+          'updatedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'slug',
+          'code',
+          'name',
+          'shortDescription',
+          'architecturalScope',
+          'iconName',
+          'orderIndex',
+          'isFeatured',
+          'status',
+          'subcategories',
+          'mergedIntoSlug',
+          'updatedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidKebabSlug(data.slug) &&
+        isBoundedString(data.code, 1, 10) &&
+        isBoundedString(data.name, 2, 100) &&
+        isBoundedString(data.shortDescription, 5, 400) &&
+        isBoundedString(data.architecturalScope, 0, 1500) &&
+        isBoundedString(data.iconName, 1, 60) &&
+        data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 1000 &&
+        data.isFeatured is bool &&
+        data.status is string && (data.status == 'active' || data.status == 'archived') &&
+        isBoundedStringList(data.subcategories, 30) &&
+        isBoundedString(data.mergedIntoSlug, 0, 120) &&
+        isBoundedString(data.updatedByUid, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserSubmissionDoc(data) {
+      return data.keys().hasAll([
+          'submitterUid',
+          'submitterName',
+          'submissionType',
+          'title',
+          'targetResourceSlug',
+          'categorySlug',
+          'summary',
+          'proposedCodeOrContent',
+          'sourceUrl',
+          'licenseAttestation',
+          'status',
+          'reviewerNotes',
+          'reviewedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'submitterUid',
+          'submitterName',
+          'submissionType',
+          'title',
+          'targetResourceSlug',
+          'categorySlug',
+          'summary',
+          'proposedCodeOrContent',
+          'sourceUrl',
+          'licenseAttestation',
+          'status',
+          'reviewerNotes',
+          'reviewedByUid',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isBoundedString(data.submitterUid, 1, 128) &&
+        isBoundedString(data.submitterName, 1, 80) &&
+        data.submissionType is string && (
+          data.submissionType == 'design-resource' ||
+          data.submissionType == 'visual-example' ||
+          data.submissionType == 'interactive-demo' ||
+          data.submissionType == 'correction-report' ||
+          data.submissionType == 'new-technology' ||
+          data.submissionType == 'related-reference'
+        ) &&
+        isBoundedString(data.title, 3, 140) &&
+        isBoundedString(data.targetResourceSlug, 0, 120) &&
+        isBoundedString(data.categorySlug, 0, 100) &&
+        isBoundedString(data.summary, 10, 3000) &&
+        isBoundedString(data.proposedCodeOrContent, 0, 15000) &&
+        isBoundedString(data.sourceUrl, 0, 500) &&
+        isBoundedString(data.licenseAttestation, 1, 200) &&
+        data.status is string && (
+          data.status == 'pending_review' ||
+          data.status == 'approved' ||
+          data.status == 'rejected'
+        ) &&
+        isBoundedString(data.reviewerNotes, 0, 1000) &&
+        isBoundedString(data.reviewedByUid, 0, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCmsAuditLogDoc(data) {
+      return data.keys().hasAll([
+          'actorUid',
+          'actorName',
+          'actorRole',
+          'action',
+          'targetType',
+          'targetId',
+          'summary',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'actorUid',
+          'actorName',
+          'actorRole',
+          'action',
+          'targetType',
+          'targetId',
+          'summary',
+          'createdAt'
+        ]) &&
+        isBoundedString(data.actorUid, 1, 128) &&
+        isBoundedString(data.actorName, 1, 80) &&
+        data.actorRole is string && (
+          data.actorRole == 'super_admin' ||
+          data.actorRole == 'admin' ||
+          data.actorRole == 'editor' ||
+          data.actorRole == 'reviewer'
+        ) &&
+        isBoundedString(data.action, 2, 80) &&
+        data.targetType is string && (
+          data.targetType == 'resource' ||
+          data.targetType == 'category' ||
+          data.targetType == 'submission' ||
+          data.targetType == 'role'
+        ) &&
+        isBoundedString(data.targetId, 1, 128) &&
+        isBoundedString(data.summary, 1, 500) &&
+        data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // COLLECTION 1: USER PROFILES (/users/{userId}) - PII ISOLATED
+    // ===============================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'photoURL',
+          'roleTitle',
+          'bio',
+          'preferredTheme',
+          'reducedMotion',
+          'recentlyViewedSlugs',
+          'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // ===============================================================
+      // SUBCOLLECTION: USER BOOKMARKS (/users/{userId}/bookmarks/{bookmarkId})
+      // ===============================================================
+      match /bookmarks/{bookmarkId} {
+        allow get, list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) &&
+          isValidId(bookmarkId) &&
+          isOwner(userId) &&
+          isValidUserBookmark(incoming()) &&
+          incoming().uid == userId &&
+          incoming().resourceSlug == bookmarkId &&
+          incoming().createdAt == request.time;
+        allow update: if isValidId(userId) &&
+          isValidId(bookmarkId) &&
+          isOwner(userId) &&
+          isValidUserBookmark(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().resourceSlug == existing().resourceSlug &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['notes']);
+        allow delete: if isValidId(userId) && isValidId(bookmarkId) && isOwner(userId);
+      }
+    }
+
+    // ===============================================================
+    // COLLECTION 2: PERSONAL COLLECTIONS (/collections/{collectionId})
+    // ===============================================================
+    match /collections/{collectionId} {
+      allow get, list: if existing().visibility == 'public' ||
+        (isSignedIn() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(collectionId) &&
+        isVerifiedUser() &&
+        isValidPersonalCollection(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(collectionId) &&
+        isVerifiedUser() &&
+        existing().ownerId == request.auth.uid &&
+        isValidPersonalCollection(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'ownerName',
+          'name',
+          'description',
+          'visibility',
+          'resourceSlugs',
+          'updatedAt'
+        ]);
+      allow delete: if isValidId(collectionId) &&
+        isVerifiedUser() &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // COLLECTION 3: PLAYGROUND EXPERIMENTS (/experiments/{experimentId})
+    // ===============================================================
+    match /experiments/{experimentId} {
+      allow get, list: if existing().visibility == 'public' ||
+        (isSignedIn() && existing().ownerId == request.auth.uid);
+      allow create: if isValidId(experimentId) &&
+        isVerifiedUser() &&
+        isValidPlaygroundExperiment(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(experimentId) &&
+        isVerifiedUser() &&
+        existing().ownerId == request.auth.uid &&
+        isValidPlaygroundExperiment(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'ownerName',
+          'title',
+          'description',
+          'templateCategory',
+          'associatedResourceSlug',
+          'activeFile',
+          'codeHtml',
+          'codeCss',
+          'codeJs',
+          'visibility',
+          'updatedAt'
+        ]);
+      allow delete: if isValidId(experimentId) &&
+        isVerifiedUser() &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // COLLECTION 4: ADMIN ROLE ASSIGNMENTS (/admin_roles/{userId})
+    // ===============================================================
+    match /admin_roles/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isEditorOrAbove());
+      allow list: if isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().uid == request.auth.uid);
+      allow create: if isValidId(userId) &&
+        isValidAdminRoleAssignment(incoming()) &&
+        incoming().uid == userId &&
+        incoming().assignedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isSuperAdmin();
+      allow update: if isValidId(userId) &&
+        isValidAdminRoleAssignment(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().assignedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'role',
+          'assignedByUid',
+          'updatedAt'
+        ]) &&
+        isSuperAdmin();
+      allow delete: if isValidId(userId) && isSuperAdmin();
+    }
+
+    // ===============================================================
+    // COLLECTION 5: CMS RESOURCES (/cms_resources/{resourceSlug})
+    // ===============================================================
+    match /cms_resources/{resourceSlug} {
+      allow get: if isValidId(resourceSlug) &&
+        (existing().status == 'published' || isEditorOrAbove());
+      allow list: if existing().status == 'published' ||
+        isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().authorUid == request.auth.uid);
+      allow create: if isValidId(resourceSlug) &&
+        isValidCmsResourceDoc(incoming()) &&
+        incoming().slug == resourceSlug &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isEditorOrAbove() &&
+        (
+          incoming().status == 'draft' ||
+          incoming().status == 'in_review' ||
+          (isAdminOrAbove() && incoming().status == 'published' && passesPublishValidationGate(incoming()))
+        );
+      allow update: if isValidId(resourceSlug) &&
+        isValidCmsResourceDoc(incoming()) &&
+        incoming().slug == existing().slug &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'shortDescription', 'fullDescription', 'resourceType',
+          'primaryCategory', 'subcategories', 'tags', 'aliases', 'difficulty',
+          'previewType', 'codeHtml', 'codeCss', 'codeJs', 'responsiveViewports',
+          'previewVerified', 'conceptExplanation', 'howItWorks', 'useCases',
+          'advantages', 'limitations', 'bestPractices', 'commonMistakes',
+          'referenceImageUrl', 'referenceCaption', 'referenceAttribution',
+          'framework', 'dependenciesList', 'installInstructions', 'desktopBehavior',
+          'tabletBehavior', 'mobileBehavior', 'browserSupport', 'accessibilityNotes',
+          'reducedMotionFallback', 'performanceNotes', 'editableControlsSpec',
+          'relatedResources', 'prerequisites', 'alternatives', 'relatedTechnologies',
+          'status', 'authorUid', 'authorName', 'reviewerName', 'reviewNotes',
+          'license', 'sources', 'revisionNumber', 'publishedAtIso', 'lastVerifiedIso',
+          'updatedAt'
+        ]) &&
+        (
+          (
+            isEditorOrAbove() &&
+            (incoming().status == 'draft' || incoming().status == 'in_review')
+          ) ||
+          (
+            isReviewerOrAbove() &&
+            (incoming().status == 'approved' || incoming().status == 'rejected')
+          ) ||
+          (
+            isAdminOrAbove() &&
+            (
+              (incoming().status == 'published' && passesPublishValidationGate(incoming())) ||
+              incoming().status == 'archived' ||
+              incoming().status == 'approved' ||
+              incoming().status == 'draft'
+            )
+          )
+        );
+      allow delete: if isValidId(resourceSlug) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 6: CMS CATEGORIES (/cms_categories/{categorySlug})
+    // ===============================================================
+    match /cms_categories/{categorySlug} {
+      allow get: if isValidId(categorySlug) &&
+        (existing().status == 'active' || existing().status == 'archived' || isEditorOrAbove());
+      allow list: if existing().status == 'active' ||
+        existing().status == 'archived' ||
+        isBootstrappedSuperAdmin();
+      allow create: if isValidId(categorySlug) &&
+        isValidCmsCategoryDoc(incoming()) &&
+        incoming().slug == categorySlug &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdminOrAbove();
+      allow update: if isValidId(categorySlug) &&
+        isValidCmsCategoryDoc(incoming()) &&
+        incoming().slug == existing().slug &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'code',
+          'name',
+          'shortDescription',
+          'architecturalScope',
+          'iconName',
+          'orderIndex',
+          'isFeatured',
+          'status',
+          'subcategories',
+          'mergedIntoSlug',
+          'updatedByUid',
+          'updatedAt'
+        ]) &&
+        isAdminOrAbove();
+      allow delete: if isValidId(categorySlug) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 7: USER SUBMISSIONS (/cms_submissions/{submissionId})
+    // ===============================================================
+    match /cms_submissions/{submissionId} {
+      allow get: if isValidId(submissionId) &&
+        (isReviewerOrAbove() || (isVerifiedUser() && existing().submitterUid == request.auth.uid));
+      allow list: if isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().submitterUid == request.auth.uid);
+      allow create: if isValidId(submissionId) &&
+        isVerifiedUser() &&
+        isValidUserSubmissionDoc(incoming()) &&
+        incoming().submitterUid == request.auth.uid &&
+        incoming().status == 'pending_review' &&
+        incoming().reviewerNotes == '' &&
+        incoming().reviewedByUid == '' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(submissionId) &&
+        isValidUserSubmissionDoc(incoming()) &&
+        incoming().submitterUid == existing().submitterUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().reviewedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status',
+          'reviewerNotes',
+          'reviewedByUid',
+          'updatedAt'
+        ]) &&
+        isReviewerOrAbove();
+      allow delete: if isValidId(submissionId) && isAdminOrAbove();
+    }
+
+    // ===============================================================
+    // COLLECTION 8: IMMUTABLE CMS AUDIT LOGS (/cms_audit_logs/{logId})
+    // ===============================================================
+    match /cms_audit_logs/{logId} {
+      allow get: if isValidId(logId) && isEditorOrAbove();
+      allow list: if isBootstrappedSuperAdmin() ||
+        (isVerifiedUser() && existing().actorUid == request.auth.uid);
+      allow create: if isValidId(logId) &&
+        isValidCmsAuditLogDoc(incoming()) &&
+        incoming().actorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        isEditorOrAbove();
+      allow update, delete: if false;
+    }
+  }
+}
