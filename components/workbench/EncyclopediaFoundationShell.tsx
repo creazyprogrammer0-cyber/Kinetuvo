@@ -110,7 +110,11 @@ export function EncyclopediaFoundationShell({
       />
 
       {/* Main Homepage Container (1360px max width) */}
-      <main className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16"
+      >
         {/* Sections 3 & 4: Hero Section, Live Interactive Visual Specimen & Global Search Preview */}
         <HeroInteractiveShowcase
           categories={categories}

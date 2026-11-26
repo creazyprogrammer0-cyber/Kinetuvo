@@ -10,15 +10,35 @@ import {
   Terminal,
   Box,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { AppHeader } from '@/components/shell/AppHeader';
 import { AppFooter } from '@/components/shell/AppFooter';
-import { LivePlaygroundEngine } from '@/components/playground/LivePlaygroundEngine';
 import {
   CANONICAL_PLAYGROUND_TEMPLATES,
   buildPlaygroundConfigFromResource,
   loadSavedPlaygroundExperiments,
   deleteSavedPlaygroundExperiment,
 } from '@/lib/playground/templates';
+
+const LivePlaygroundEngine = dynamic(
+  () =>
+    import('@/components/playground/LivePlaygroundEngine').then(
+      (mod) => mod.LivePlaygroundEngine
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        role="status"
+        aria-live="polite"
+        className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] p-8 space-y-3"
+      >
+        <div className="h-4 w-56 animate-pulse rounded bg-[var(--ds-muted)]" />
+        <div className="h-96 w-full animate-pulse rounded bg-[var(--ds-background)] border border-[var(--ds-border)]" />
+      </div>
+    ),
+  }
+);
 import { decodeShareablePlaygroundState } from '@/lib/playground/security-validator';
 import {
   PlaygroundFileEntry,
@@ -229,7 +249,11 @@ export default function PlaygroundPage() {
         onSelectResource={handleLoadResourceIntoPlayground}
       />
 
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10"
+      >
         {/* 1. Studio Header & Architecture Banner */}
         <section className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] p-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">

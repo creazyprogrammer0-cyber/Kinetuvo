@@ -161,7 +161,7 @@ export function AppHeader({
     if (onSelectResource && pathname === '/') {
       onSelectResource(slug);
     } else {
-      router.push(`/concept/${slug}`);
+      router.push(`/resources/${slug}`);
     }
   };
 
@@ -279,7 +279,7 @@ export function AppHeader({
                         {categories.map((cat) => (
                           <Link
                             key={cat.id}
-                            href={`/taxonomy/${cat.slug}`}
+                            href={`/categories/${cat.slug}`}
                             onClick={() => setMegaMenuOpen(false)}
                             className="p-2 rounded-[6px] hover:bg-[var(--ds-muted)] transition-colors block"
                           >
@@ -307,7 +307,7 @@ export function AppHeader({
                           {popularSubcategories.map((sub, i) => (
                             <Link
                               key={`${sub.categorySlug}-${i}`}
-                              href={`/taxonomy/${sub.categorySlug}`}
+                              href={`/categories/${sub.categorySlug}`}
                               onClick={() => setMegaMenuOpen(false)}
                               className="flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-xs text-[var(--ds-foreground)] hover:bg-[var(--ds-muted)] transition-colors"
                             >
@@ -353,7 +353,7 @@ export function AppHeader({
                           {featuredResources.map((res) => (
                             <Link
                               key={res.id}
-                              href={`/concept/${res.slug}`}
+                              href={`/resources/${res.slug}`}
                               onClick={() => setMegaMenuOpen(false)}
                               className="block p-2.5 rounded-[8px] bg-[var(--ds-background)] hover:bg-[var(--ds-muted)] border border-[var(--ds-border)] transition-colors"
                             >
@@ -380,7 +380,7 @@ export function AppHeader({
                           {recentlyAddedResources.map((res) => (
                             <Link
                               key={res.id}
-                              href={`/concept/${res.slug}`}
+                              href={`/resources/${res.slug}`}
                               onClick={() => setMegaMenuOpen(false)}
                               className="flex items-center justify-between px-2 py-1 text-xs text-[var(--ds-muted-foreground)] hover:text-[var(--ds-foreground)] transition-colors"
                             >
@@ -408,10 +408,10 @@ export function AppHeader({
             </Link>
 
             <Link
-              href="/taxonomy/official-design-systems"
+              href="/categories/official-design-systems"
               className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
-                pathname === '/taxonomy/official-design-systems' ||
-                pathname === '/taxonomy/design-systems'
+                pathname === '/categories/official-design-systems' ||
+                pathname === '/taxonomy/official-design-systems'
                   ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
                   : ''
               }`}
@@ -420,10 +420,10 @@ export function AppHeader({
             </Link>
 
             <Link
-              href="/taxonomy/motion-animation"
+              href="/categories/motion-animation"
               className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
-                pathname === '/taxonomy/motion-animation' ||
-                pathname === '/taxonomy/motion-choreography'
+                pathname === '/categories/motion-animation' ||
+                pathname === '/taxonomy/motion-animation'
                   ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
                   : ''
               }`}
@@ -432,27 +432,26 @@ export function AppHeader({
             </Link>
 
             <Link
-              href="/taxonomy/ux-interaction-patterns"
+              href="/categories/ui-components"
               className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
-                pathname === '/taxonomy/ux-interaction-patterns' ||
-                pathname === '/taxonomy/interaction-patterns'
-                  ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
-                  : ''
-              }`}
-            >
-              Interactions
-            </Link>
-
-            <Link
-              href="/taxonomy/ui-components"
-              className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
-                pathname === '/taxonomy/ui-components' ||
-                pathname === '/taxonomy/accessible-primitives'
+                pathname === '/categories/ui-components' ||
+                pathname === '/taxonomy/ui-components'
                   ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
                   : ''
               }`}
             >
               Components
+            </Link>
+
+            <Link
+              href="/technologies"
+              className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
+                pathname.startsWith('/technologies')
+                  ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
+                  : ''
+              }`}
+            >
+              Technologies
             </Link>
 
             <Link
@@ -467,14 +466,14 @@ export function AppHeader({
             </Link>
 
             <Link
-              href="/design-system"
+              href="/audit"
               className={`py-2 whitespace-nowrap shrink-0 transition-colors hover:text-[var(--ds-foreground)] ${
-                pathname === '/design-system'
+                pathname === '/audit'
                   ? 'text-[var(--ds-foreground)] underline decoration-[var(--ds-accent)] decoration-2 underline-offset-8'
                   : ''
               }`}
             >
-              UI System
+              SEO & A11y Audit
             </Link>
           </nav>
 
@@ -803,14 +802,16 @@ export function AppHeader({
               { label: 'Homepage & Interactive Showcase', href: '/' },
               { label: 'Global Search & Discovery Engine', href: '/search' },
               { label: 'Resource Directory & Multi-Facet Explorer', href: '/directory' },
+              { label: 'Web Technologies Reference Index', href: '/technologies' },
               { label: 'Interactive Code Playground', href: '/playground' },
+              { label: 'SEO, WCAG 2.2 AA & CWV Audit Console', href: '/audit' },
               { label: 'Personal Design Library & Dashboard', href: '/dashboard' },
               { label: 'Administration Dashboard & CMS', href: '/admin' },
               { label: 'Design System & Component Library', href: '/design-system' },
-              { label: 'Official Design Systems Track', href: '/taxonomy/official-design-systems' },
-              { label: 'Motion & Animation Track', href: '/taxonomy/motion-animation' },
-              { label: 'UX & Interaction Patterns Track', href: '/taxonomy/ux-interaction-patterns' },
-              { label: 'UI Components Track', href: '/taxonomy/ui-components' },
+              { label: 'Official Design Systems Track', href: '/categories/official-design-systems' },
+              { label: 'Motion & Animation Track', href: '/categories/motion-animation' },
+              { label: 'UX & Interaction Patterns Track', href: '/categories/ux-interaction-patterns' },
+              { label: 'UI Components Track', href: '/categories/ui-components' },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -836,7 +837,7 @@ export function AppHeader({
               {categories.map((cat) => (
                 <Link
                   key={cat.id}
-                  href={`/taxonomy/${cat.slug}`}
+                  href={`/categories/${cat.slug}`}
                   onClick={() => setMobileDrawerOpen(false)}
                   className="flex items-center justify-between min-h-[40px] px-2.5 py-1.5 rounded-[6px] text-xs text-[var(--ds-muted-foreground)] hover:text-[var(--ds-foreground)] hover:bg-[var(--ds-muted)]"
                 >

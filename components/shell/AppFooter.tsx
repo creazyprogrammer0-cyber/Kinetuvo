@@ -41,7 +41,7 @@ export function AppFooter() {
               {primaryCategories.map((cat) => (
                 <li key={cat.id}>
                   <Link
-                    href={`/taxonomy/${cat.slug}`}
+                    href={`/categories/${cat.slug}`}
                     className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
                   >
                     {cat.name}
@@ -60,7 +60,7 @@ export function AppFooter() {
               {secondaryCategories.map((cat) => (
                 <li key={cat.id}>
                   <Link
-                    href={`/taxonomy/${cat.slug}`}
+                    href={`/categories/${cat.slug}`}
                     className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
                   >
                     {cat.name}
@@ -73,7 +73,7 @@ export function AppFooter() {
           {/* Col 11-12: Platform, Documentation, Playground, Community & Legal */}
           <div className="lg:col-span-2 space-y-2.5">
             <h3 className="font-mono text-xs font-bold text-[var(--ds-foreground)]">
-              Platform & Community
+              Platform & Governance
             </h3>
             <ul className="space-y-1.5 text-xs">
               <li>
@@ -82,6 +82,22 @@ export function AppFooter() {
                   className="hover:text-[var(--ds-foreground)] hover:underline transition-colors font-semibold text-[var(--ds-accent)]"
                 >
                   Interactive Playground
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/technologies"
+                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+                >
+                  Web Technologies Index
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/audit"
+                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors font-semibold text-[var(--ds-foreground)]"
+                >
+                  SEO, WCAG & CWV Audit
                 </Link>
               </li>
               <li>
@@ -102,6 +118,14 @@ export function AppFooter() {
               </li>
               <li>
                 <Link
+                  href="/info/contribution-guidelines"
+                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+                >
+                  Contribution Guidelines
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/info/submit-resource"
                   className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
                 >
@@ -110,26 +134,10 @@ export function AppFooter() {
               </li>
               <li>
                 <Link
-                  href="/info/community"
-                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
-                >
-                  Community
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/info/about"
                   className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
                 >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/info/contact"
-                  className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
-                >
-                  Contact
+                  About & Attribution
                 </Link>
               </li>
               <li>
@@ -144,19 +152,13 @@ export function AppFooter() {
           </div>
         </div>
 
-        {/* Bottom Legal & Attribution Bar */}
+        {/* Bottom Legal, Privacy & Attribution Bar */}
         <div className="pt-6 border-t border-[var(--ds-border)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div>
             © {new Date().getFullYear()} {BRAND_CONFIG.productName}. Configurable Brand
             Architecture · Verifiable Open Attribution.
           </div>
-          <div className="flex flex-wrap items-center gap-5">
-            <Link
-              href="/info/legal"
-              className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
-            >
-              Legal Information
-            </Link>
+          <div className="flex flex-wrap items-center gap-4">
             <Link
               href="/info/privacy"
               className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
@@ -167,8 +169,32 @@ export function AppFooter() {
               href="/info/terms"
               className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
             >
-              Terms of Use
+              Terms of Service
             </Link>
+            <Link
+              href="/info/cookies"
+              className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+            >
+              Cookie & Storage Notice
+            </Link>
+            <Link
+              href="/info/data-deletion"
+              className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+            >
+              User Data Deletion
+            </Link>
+            <Link
+              href="/info/legal"
+              className="hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+            >
+              Legal
+            </Link>
+            <a
+              href="/sitemap.xml"
+              className="font-mono text-[11px] hover:text-[var(--ds-foreground)] hover:underline transition-colors"
+            >
+              Sitemap.xml
+            </a>
           </div>
         </div>
       </div>
